@@ -1,0 +1,5 @@
+nutrition-os-backup-*.json
+.env
+.env.*
+.DS_Store
+node_modules/
