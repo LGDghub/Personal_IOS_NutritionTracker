@@ -1,4 +1,4 @@
-# Nutrition OS v2.1 — private sync
+# Personal WFW Tracker v2.1 — private sync
 
 The app uses Supabase Auth and the owner-private public.nutrition_state table.
 The public publishable key in sync.js is intentional. No server secret is shipped.
@@ -10,7 +10,7 @@ In Supabase Authentication → URL Configuration, set Site URL to:
 https://lgdghub.github.io/Personal_IOS_NutritionTracker/
 Add the same exact address under Redirect URLs and save.
 
-In Nutrition OS Settings, export your existing JSON backup, then Create account
+In Personal WFW Tracker Settings, export your existing JSON backup, then Create account
 using your email and a new password. This is a separate app login, not your
 Supabase dashboard login. Confirm the email, return to the app, and sign in.
 On an existing install use Settings → Check for app updates → Update.

@@ -49,7 +49,7 @@ $('authForm').onsubmit=async event=>{
 };
 $('signOut').onclick=async()=>{if(syncBusy){toast('Wait for the current sync to finish.');return}const {error}=await cloud.auth.signOut({scope:'local'});if(error)$('authMessage').textContent=error.message};
 cloud.auth.onAuthStateChange((_event,session)=>{
- cloudUser=session?.user||null;$('authForm').hidden=!!cloudUser;$('signOut').hidden=!cloudUser;$('syncNow').hidden=!cloudUser;$('cloudAccount').textContent=cloudUser?'Signed in as '+cloudUser.email:'Create a Nutrition OS login. This is separate from your Supabase dashboard account.';
+ cloudUser=session?.user||null;$('authForm').hidden=!!cloudUser;$('signOut').hidden=!cloudUser;$('syncNow').hidden=!cloudUser;$('cloudAccount').textContent=cloudUser?'Signed in as '+cloudUser.email:'Create a Personal WFW Tracker login. This is separate from your Supabase dashboard account.';
  cloudConflict=null;$('syncConflict').hidden=true;
  // Run outside the auth callback to avoid waiting on the SDK's auth lock.
  setTimeout(syncNow,0);

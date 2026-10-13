@@ -27,7 +27,7 @@ function safeGoals(g){assert(record(g),'Invalid targets');const out={};for(const
 function safeTicks(obj,keys){assert(record(obj),'Invalid checkboxes');const out={};for(const [k,v] of Object.entries(obj)){assert(keys.includes(k)&&typeof v==='boolean','Invalid checkbox');out[k]=v}return out}
 function makeDay(state){return {meals:clone(state.templates),completed:{},supplements:{},water:0,waterRecorded:false,goals:clone(state.settings.goals),updatedAt:null}}
 function normalize(raw){
- assert(record(raw)&&record(raw.days)&&record(raw.weights)&&record(raw.shop),'Not a Nutrition OS backup');
+ assert(record(raw)&&record(raw.days)&&record(raw.weights)&&record(raw.shop),'Not a Personal WFW Tracker backup');
  assert(raw.version===undefined||raw.version===1||raw.version===2,'Unsupported backup version');
  const s=freshState();
  if(raw.version===2){

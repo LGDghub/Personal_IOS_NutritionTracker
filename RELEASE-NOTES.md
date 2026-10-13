@@ -1,4 +1,4 @@
-# Nutrition OS 2.0
+# Personal WFW Tracker 2.0
 
 Built by extending the October 13 Nutrition_OS_iPhone_PWA.zip package.
 
@@ -53,3 +53,6 @@ been verified.
 - Weekly weight entry is restricted to Monday dates. Next Monday is shown on other days.
 - Past Monday measurements can be reviewed/corrected. Existing non-Monday entries remain in history.
 - No cloud schema or nutrition-data migration required.
+
+## v2.2.1 — Personal WFW Tracker
+Renamed the app header, browser title, Home Screen metadata, account text and backup filenames. Existing storage keys, deployment address and database identifiers are retained for continuity.

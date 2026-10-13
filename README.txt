@@ -1,4 +1,4 @@
-NUTRITION OS v2.0 — PERSONAL iPHONE PWA
+PERSONAL WFW TRACKER v2.0 — PERSONAL iPHONE PWA
 
 Continues the original Nutrition_OS_iPhone_PWA package. Original meal ingredients,
 approximate macros, supplement labels, icons and shopping prices are retained.
