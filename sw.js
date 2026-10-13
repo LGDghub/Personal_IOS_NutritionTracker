@@ -1,8 +1,8 @@
 // Bump VERSION for each release. Waiting updates are applied by the user's Update button.
-const VERSION='v2.0.0';
+const VERSION='v2.1.0';
 const PREFIX='nutrition-os-'+encodeURIComponent(self.registration.scope)+'-';
 const CACHE=PREFIX+VERSION;
-const ASSETS=['./','./index.html','./style.css','./model.js','./app.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
+const ASSETS=['./','./index.html','./style.css','./model.js','./app.js','./sync.js','./vendor/supabase-2.117.3.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS))));
 self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')self.skipWaiting()});
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith(PREFIX)&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));

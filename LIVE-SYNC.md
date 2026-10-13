@@ -1,65 +1,52 @@
-# Nutrition OS: private live access
+# Nutrition OS v2.1 — private sync
 
-Status: design only. This package has no remote backend or active ChatGPT connector.
+The app uses Supabase Auth and the owner-private public.nutrition_state table.
+The public publishable key in sync.js is intentional. No server secret is shipped.
+The Supabase JavaScript SDK is pinned to 2.117.3 and vendored for offline startup.
 
-The requested behaviour is achievable as two separate steps:
+## One-time account setup
 
-1. The PWA uploads changes to your private online data store as you log them online.
-2. When you ask ChatGPT about a date or week, a read-only connector retrieves the
-   latest successfully synced records. It must include the last-sync time.
+In Supabase Authentication → URL Configuration, set Site URL to:
+https://lgdghub.github.io/Personal_IOS_NutritionTracker/
+Add the same exact address under Redirect URLs and save.
 
-This does not mean that every checkbox becomes a message in an existing chat or
-that ChatGPT silently monitors your phone. Offline changes must remain queued and
-be sent when the app is next open and connected. iPhone background execution must
-not be assumed.
+In Nutrition OS Settings, export your existing JSON backup, then Create account
+using your email and a new password. This is a separate app login, not your
+Supabase dashboard login. Confirm the email, return to the app, and sign in.
+On an existing install use Settings → Check for app updates → Update.
 
-## GitHub Pages architecture
+Local records upload on sign-in when the cloud is empty. A clean new device pulls
+existing cloud records. If both contain different data, choose the copy to keep;
+there is no automatic merge. Export first. Recovery copies are stored locally
+under nutrition-os-pwa-v1-before-cloud / nutrition-os-pwa-v1-cloud-before-replace.
 
-Keep the UI on GitHub Pages. Add an authenticated HTTPS API and database on a
-server-capable host. GitHub Pages cannot run that API or the MCP server itself.
-Use established OAuth for the PWA and connector, an owner-only database policy,
-and a read-only scope for ChatGPT. Never embed a database service key or private
-GitHub token in frontend JavaScript; never publish exported nutrition logs to Pages.
+## Behaviour
 
-Data contract:
-- Per-date nutrition records: meal snapshots, completion flags, supplement flags,
-  water quantity, whether water was actually logged, goal snapshots and updatedAt.
-- Per-date weight records, including deletions.
-- User settings and meal templates.
-- Weekly shopping records and prices.
-- Server revision and last successful sync timestamp.
+Changes save locally first. Sync runs after edits, on reconnect/focus, and every
+30 seconds while visible. It does not promise iOS background uploading. Offline
+records sync when you reopen online. Only server acknowledgements show Synced.
+Optimistic revisions reject stale writes. Different account logins are blocked
+from uploading this device's bound records. Signing out retains local records.
+Clearing all tracking also syncs the empty state when signed in, after confirmation.
 
-Proposed PWA API:
-- GET /v1/state: get the owner's records and server revision.
-- POST /v1/changes: idempotent operations with operation IDs and expected revisions.
-  Each operation targets a dated record; server rejects stale revisions instead
-  of silently replacing more recent data. Keep deletion tombstones.
-- GET /v1/sync-status: last server write and revision.
+The connected Supabase management plugin can read nutrition_state.payload when
+asked in a chat where it is available. It is a project administration connection,
+not a dedicated read-only nutrition connector. No new MCP service was deployed.
+ChatGPT must fetch records for the requested date range and report updated_at,
+the last successful cloud upload. It must distinguish unlogged from zero values.
+GitHub contains app source, never nutrition logs or account passwords.
 
-Proposed read-only MCP tools:
-- get_nutrition_days(start_date, end_date): dated meals, eaten flags, macros,
-  water, targets, supplements and weights; explicitly identify unlogged dates.
-- get_nutrition_week(week_start): exact daily records plus weekly aggregates.
-- get_weight_history(start_date, end_date): individual weigh-ins and weekly means.
-- get_sync_status(): source revision and last successful upload time.
+## Checks
 
-UI additions once deployed: Sign in, Last synced [time], Offline—changes pending,
-Retry sync, and a recoverable conflict review. Never display Synced before the
-server acknowledges all pending operations. Export/import remains available.
+node tests/model.test.cjs
+node tests/app.test.cjs
+node tests/sync.test.cjs
 
-## Lower-setup alternative
+Database tests passed for owner read/write, stale-revision rejection, cross-user
+read/update denial and anonymous denial. Test users and records were rolled back.
+Security advisor returned no findings. Browser/iPhone end-to-end testing remains
+pending the user's signup and first sync.
 
-If you choose to move hosting from GitHub Pages to a private ChatGPT Site, Sites
-can provide authenticated hosting, durable server storage and a Site MCP plugin.
-That would be a hosting decision, not an automatic change to this GitHub package.
-No Site was created as part of this update.
-
-## Acceptance test for the completed connection
-
-Log a meal, water and weight on iPhone, then ask ChatGPT for that date and compare
-exact values. Change and untick entries and verify the results again. Repeat after
-an offline edit and reconnect. Check that unlogged days remain unknown, that
-another unauthorised user cannot read data, and that a failed sync is visible.
-
-Official connector documentation:
-https://developers.openai.com/api/docs/mcp
+Acceptance: log a meal, water and weight, wait for Synced, then ask ChatGPT to
+retrieve those entries. Untick/edit and repeat; also test an offline edit followed
+by reopening online. Do not infer successful sync from local UI ticks alone.

@@ -39,3 +39,11 @@ been verified.
   inferred from the original aggregate meal totals.
 - Data is local to this browser/origin; no automatic remote backup exists yet.
 - Cloud sync and read-only ChatGPT access still require deployment of a backend.
+
+## v2.1 — Supabase sync
+- Email/password account creation and sign-in.
+- Automatic private snapshot syncing, visible status and manual retry.
+- Offline edits retained; stale writes stop for explicit conflict resolution.
+- Account binding prevents accidental cross-account uploads.
+- SDK cached locally; existing storage identity and JSON backups preserved.
+- Connected Supabase plugin can retrieve synced records when asked.
