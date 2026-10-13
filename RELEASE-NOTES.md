@@ -47,3 +47,9 @@ been verified.
 - Account binding prevents accidental cross-account uploads.
 - SDK cached locally; existing storage identity and JSON backups preserved.
 - Connected Supabase plugin can retrieve synced records when asked.
+
+## v2.2 — refreshed colours and Monday weigh-ins
+- Midnight teal dark theme and warm cream light theme; system theme still supported.
+- Weekly weight entry is restricted to Monday dates. Next Monday is shown on other days.
+- Past Monday measurements can be reviewed/corrected. Existing non-Monday entries remain in history.
+- No cloud schema or nutrition-data migration required.

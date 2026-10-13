@@ -11,7 +11,7 @@ function readDay(){return state.days[dayKey]||makeDay(state)}
 function day(){state.days[dayKey]??=makeDay(state);return state.days[dayKey]}
 function save(){state.updatedAt=new Date().toISOString();if(storageBlocked){$('saveStatus').textContent='Not saved · recovery needed';return false}try{localStorage.setItem(KEY,JSON.stringify(state));$('saveStatus').textContent='Saved on this device';window.nutritionChanged?.();return true}catch(e){$('saveStatus').textContent='Not saved · export a backup';toast('Device storage unavailable. Export to keep your changes.');return false}}
 function changed(){day().updatedAt=new Date().toISOString();const ok=save();renderToday();return ok}
-function applyTheme(){const value=state.settings.theme==='system'?(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):state.settings.theme;document.documentElement.dataset.theme=value;document.querySelector('meta[name="theme-color"]').content=value==='light'?'#f3f5ef':'#09130d'}
+function applyTheme(){const value=state.settings.theme==='system'?(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):state.settings.theme;document.documentElement.dataset.theme=value;document.querySelector('meta[name="theme-color"]').content=value==='light'?'#f6f2eb':'#101c23'}
 function renderToday(){
  const d=readDay(),t=totals(d),goal=d.goals,pct=Math.round(t.kcal/goal.kcal*100);
  $('selectedDate').value=dayKey;$('selectedDate').max=localDay();$('dateLabel').textContent=dayKey===localDay()?'TODAY':new Date(dayKey+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long'}).toUpperCase();$('nextDay').disabled=dayKey>=localDay();
@@ -24,7 +24,11 @@ function renderToday(){
  $('waterChecks').innerHTML=Array.from({length:cups},(_,i)=>`<label class="watercup ${d.water>=(i+1)*.25?'done':''}"><input type="checkbox" data-cup="${i}" aria-label="Water portion ${i+1}, 250 millilitres" ${d.water>=(i+1)*.25?'checked':''}><span>${i+1}</span></label>`).join('');
  $('water').value=d.waterRecorded?d.water:'';$('waterProgress').textContent=`${fmt(d.water)} / ${fmt(goal.water)}L${d.water>=goal.water?' · Hit':''}`;$('waterGoalHint').textContent=`Your tracking goal: ${fmt(goal.water)}L. Change it in Settings.`;
  $('weight').value=state.weights[dayKey]??'';$('deleteWeight').hidden=state.weights[dayKey]===undefined;
- const latest=Object.keys(state.weights).filter(x=>x<=dayKey).sort().at(-1);$('weighDue').textContent=latest?(dateNumber(dayKey)-dateNumber(latest)>=7?'Time for a weigh-in':'Last: '+latest):'Add your first entry';
+ const monday=weekStart(dayKey),isMonday=dayKey===monday,hasWeight=state.weights[dayKey]!==undefined;
+ $('weight').disabled=!isMonday;$('saveWeight').disabled=!isMonday;
+ $('weighDue').textContent=isMonday?(hasWeight?'Monday · saved':'Monday · weigh-in day'):'Mondays only';
+ $('weighHint').textContent=isMonday?'Enter the weight measured on this Monday. You can return to this date to correct it.':`Your next weigh-in is Monday ${new Date(shiftDate(monday,7)+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long'})}. ${hasWeight?'Your earlier entry is kept in history. ':''}Only Monday dates accept new weigh-ins.`;
+ $('reviewMonday').hidden=isMonday;$('reviewMonday').textContent='Review Monday '+new Date(monday+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
 }
 function renderShop(){const ticks=state.shoppingWeeks[shopKey]||{};$('shopWeek').value=shopKey;$('shopWeekLabel').textContent=`Week of ${shopKey} to ${shiftDate(shopKey,6)} · separate ticks each week`;
  $('shopTotal').textContent=money(state.shoppingItems.reduce((n,i)=>n+i.price,0));$('shopRemaining').textContent=money(state.shoppingItems.reduce((n,i,j)=>n+(ticks[j]?0:i.price),0))+' left to buy';
@@ -48,7 +52,7 @@ function selectDate(date){if(!validDate(date)||date>localDay()){toast('Choose to
 function checkDayChange(){const now=localDay();if(now!==lastToday){if(dayKey===lastToday)dayKey=now;if(shopKey===weekStart(lastToday))shopKey=weekStart(now);lastToday=now;render()}}
 function openFood(id=null){editingFood=id;editingDay=dayKey;const form=$('foodForm');form.reset();const m=id?readDay().meals.find(m=>m.id===id):null;$('foodTitle').textContent=m?'Edit '+m.name:'Add food or a snack';form.elements.namedItem('name').value=m?.name||'';form.elements.namedItem('foods').value=m?.foods.join('\n')||'';for(const k of MACROS)form.elements.namedItem(k).value=m?.[k]??'';form.elements.namedItem('eaten').checked=m?!!readDay().completed[id]:true;$('templateOption').hidden=!MEALS.some(m=>m.id===id);$('foodDialog').showModal()}
 function downloadJSON(data,filename){const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
-function exportData(){const dates=[...new Set([...Object.keys(state.days),...Object.keys(state.weights)])].sort();downloadJSON({...state,exportedAt:new Date().toISOString(),appVersion:'2.0',timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone,summaries:dates.map(d=>dailySummary(state,d))},`nutrition-os-backup-${localDay()}.json`)}
+function exportData(){const dates=[...new Set([...Object.keys(state.days),...Object.keys(state.weights)])].sort();downloadJSON({...state,exportedAt:new Date().toISOString(),appVersion:'2.2',timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone,summaries:dates.map(d=>dailySummary(state,d))},`nutrition-os-backup-${localDay()}.json`)}
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{checkDayChange();switchTab(b.dataset.tab)});
 $('selectedDate').onchange=e=>selectDate(e.target.value);$('prevDay').onclick=()=>selectDate(shiftDate(dayKey,-1));$('nextDay').onclick=()=>selectDate(shiftDate(dayKey,1));$('goToday').onclick=()=>selectDate(localDay());
 document.addEventListener('change',e=>{
@@ -64,7 +68,8 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
 $('addFood').onclick=()=>openFood();$('closeFood').onclick=()=>$('foodDialog').close();
 $('foodForm').onsubmit=e=>{e.preventDefault();const f=e.target;const old=editingFood;const m={id:old||'extra_'+crypto.randomUUID(),name:f.elements.namedItem('name').value.trim(),foods:f.elements.namedItem('foods').value.split('\n').map(x=>x.trim()).filter(Boolean)};for(const k of MACROS)m[k]=Number(f.elements.namedItem(k).value);try{safeMeal(m)}catch(err){toast(err.message);return}dayKey=editingDay;const d=day();if(old)d.meals=d.meals.map(x=>x.id===old?m:x);else{if(d.meals.length>=200){toast('Daily food limit reached.');return}d.meals.push(m)}d.completed[m.id]=f.elements.namedItem('eaten').checked;if(MEALS.some(x=>x.id===m.id)&&f.elements.namedItem('future').checked)state.templates=state.templates.map(x=>x.id===m.id?clone(m):x);const ok=changed();$('foodDialog').close();if(ok)toast('Food saved for '+dayKey)};
 $('addWater').onclick=()=>{day().water=Math.min(10,round(day().water+.25));day().waterRecorded=true;changed()};
-$('saveWeight').onclick=()=>{const n=Number($('weight').value);if(!Number.isFinite(n)||n<30||n>250){toast('Enter a weight between 30 and 250 kg.');return}state.weights[dayKey]=round(n);const ok=save();renderToday();if(ok)toast('Weigh-in saved for '+dayKey)};
+$('reviewMonday').onclick=()=>selectDate(weekStart(dayKey));
+$('saveWeight').onclick=()=>{if(dayKey!==weekStart(dayKey)){toast('Weekly weigh-ins are on Mondays. Choose a Monday to log its measurement.');return}const n=Number($('weight').value);if(!Number.isFinite(n)||n<30||n>250){toast('Enter a weight between 30 and 250 kg.');return}state.weights[dayKey]=round(n);const ok=save();renderToday();if(ok)toast('Weigh-in saved for '+dayKey)};
 $('deleteWeight').onclick=()=>{if(confirm('Remove the weigh-in for '+dayKey+'?')){delete state.weights[dayKey];save();renderToday()}};
 $('shopWeek').onchange=e=>{if(validDate(e.target.value)){shopKey=weekStart(e.target.value);renderShop()}};
 $('resetShop').onclick=()=>{if(confirm('Clear shopping ticks for the week of '+shopKey+'?')){state.shoppingWeeks[shopKey]={};save();renderShop()}};
