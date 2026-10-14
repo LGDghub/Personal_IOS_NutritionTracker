@@ -56,3 +56,6 @@ been verified.
 
 ## v2.2.1 — Personal WFW Tracker
 Renamed the app header, browser title, Home Screen metadata, account text and backup filenames. Existing storage keys, deployment address and database identifiers are retained for continuity.
+
+## v2.3 — email password recovery
+Forgot password sends a Supabase recovery link to the entered account email. Verified recovery sessions open a new-password form with confirmation, validation and error handling. Sync waits until password recovery completes. No passwords are saved to app storage.

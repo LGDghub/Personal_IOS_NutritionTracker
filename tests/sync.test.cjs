@@ -10,7 +10,7 @@ vm.runInContext(fs.readFileSync(path.join(root,'model.js'),'utf8')+'\n'+fs.readF
 let remote=null,writes=0,failWrite=false,authCallback;
 const copy=x=>JSON.parse(JSON.stringify(x));
 const mock={auth:{onAuthStateChange(fn){authCallback=fn}},from(){return {select(){return {eq(){return {async maybeSingle(){return {data:copy(remote),error:null}}}}}}}},async rpc(_name,args){writes++;if(failWrite)return {error:{message:'Network failed'}};if(args.expected_revision!==(remote?.revision||0))return {error:{code:'40001'}};remote={user_id:'user-a',revision:(remote?.revision||0)+1,payload:copy(args.next_payload),updated_at:new Date().toISOString()};return {data:copy(remote)}}};
-context.supabase={createClient:()=>mock};
+context.URLSearchParams=URLSearchParams;context.supabase={createClient:()=>mock};
 vm.runInContext(fs.readFileSync(path.join(root,'sync.js'),'utf8'),context);
 const run=s=>vm.runInContext(s,context);
 (async()=>{

@@ -50,3 +50,6 @@ pending the user's signup and first sync.
 Acceptance: log a meal, water and weight, wait for Synced, then ask ChatGPT to
 retrieve those entries. Untick/edit and repeat; also test an offline edit followed
 by reopening online. Do not infer successful sync from local UI ticks alone.
+
+## Password recovery (v2.3)
+Settings → Forgot password? sends a recovery link through Supabase Auth. The existing app root redirect URL is reused. Open the newest email link to choose and confirm a new password. Recovery is validated by Supabase, and updateUser requires the resulting authenticated session. Mocked recovery and sync checks passed; actual email delivery and iPhone link opening require a user-run check.

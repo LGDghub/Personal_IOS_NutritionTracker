@@ -1,5 +1,8 @@
 'use strict';
 // Only a public client key belongs here. Row-level security protects every record.
+const resetReturnURL='https://lgdghub.github.io/Personal_IOS_NutritionTracker/';
+let recoveryPending=new URLSearchParams(location.hash?.slice(1)||'').get('type')==='recovery',recoveryUserId=null;
+try{recoveryUserId=sessionStorage.getItem('wfw-password-recovery')}catch{}
 const cloud = supabase.createClient('https://zrtnabwryzbdqzwghxcp.supabase.co','sb_publishable_qKmHecgEm6v5_-WJR0ib_Q_G7gwbWmq');
 const SYNC_KEY=KEY+'-cloud';
 let syncMeta={},cloudUser=null,syncBusy=false,syncTimer,cloudConflict=null;
@@ -12,7 +15,7 @@ window.nutritionChanged=syncChanged;
 function showConflict(row){cloudConflict=row;$('syncConflict').hidden=false;syncLabel('Two copies differ · choose in Settings');$('conflictDetail').textContent=`Cloud saved ${new Date(row.updated_at).toLocaleString()}. Neither copy has been replaced. Export this device’s backup before choosing.`}
 function acceptCloud(row){const next=normalize(row.payload);localStorage.setItem(KEY+'-before-cloud',JSON.stringify(state));localStorage.setItem(KEY,JSON.stringify(next));state=next;syncMeta={owner:cloudUser.id,revision:row.revision,base:canonical(next),lastSync:row.updated_at};persistSync();render()}
 async function syncNow(){
- if(syncBusy||cloudConflict)return;
+ if(syncBusy||cloudConflict||recoveryPending||recoveryUserId)return;
  if(storageBlocked){syncLabel('Sync paused · reload or recover device storage');return}
  if(!cloudUser){syncLabel('Local only · sign in to sync');return}
  if(syncMeta.owner&&syncMeta.owner!==cloudUser.id){syncLabel('This device belongs to another account · sign out and use the original account');return}
@@ -49,7 +52,15 @@ $('authForm').onsubmit=async event=>{
 };
 $('signOut').onclick=async()=>{if(syncBusy){toast('Wait for the current sync to finish.');return}const {error}=await cloud.auth.signOut({scope:'local'});if(error)$('authMessage').textContent=error.message};
 cloud.auth.onAuthStateChange((_event,session)=>{
- cloudUser=session?.user||null;$('authForm').hidden=!!cloudUser;$('signOut').hidden=!cloudUser;$('syncNow').hidden=!cloudUser;$('cloudAccount').textContent=cloudUser?'Signed in as '+cloudUser.email:'Create a Personal WFW Tracker login. This is separate from your Supabase dashboard account.';
+ cloudUser=session?.user||null;
+ if(_event==='INITIAL_SESSION'&&!cloudUser&&recoveryPending){recoveryPending=false;switchTab('settings');$('passwordReset').open=true;$('resetEmailMessage').textContent='This reset link could not be verified. Request a new email and open its newest link.';}
+ if(_event==='SIGNED_OUT')recoveryPending=false;
+ if(_event==='PASSWORD_RECOVERY'&&cloudUser){recoveryPending=false;recoveryUserId=cloudUser.id;try{sessionStorage.setItem('wfw-password-recovery',recoveryUserId)}catch{}}
+ if(!cloudUser||recoveryUserId&&recoveryUserId!==cloudUser.id){recoveryUserId=null;try{sessionStorage.removeItem('wfw-password-recovery')}catch{}}
+ $('newPasswordForm').hidden=!recoveryUserId;
+ if(recoveryUserId){switchTab('settings');window.scrollTo({top:0,behavior:'instant'});syncLabel('Choose your new password to finish recovery');}
+ if(cloudUser&&!$('resetEmail').value)$('resetEmail').value=cloudUser.email||'';
+$('authForm').hidden=!!cloudUser;$('signOut').hidden=!cloudUser;$('syncNow').hidden=!cloudUser;$('cloudAccount').textContent=cloudUser?'Signed in as '+cloudUser.email:'Create a Personal WFW Tracker login. This is separate from your Supabase dashboard account.';
  cloudConflict=null;$('syncConflict').hidden=true;
  // Run outside the auth callback to avoid waiting on the SDK's auth lock.
  setTimeout(syncNow,0);
@@ -57,3 +68,28 @@ cloud.auth.onAuthStateChange((_event,session)=>{
 window.addEventListener('online',syncNow);window.addEventListener('offline',()=>syncLabel('Offline · changes stay on this device'));
 window.addEventListener('focus',syncNow);document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncNow()});
 setInterval(()=>{if(!document.hidden)syncNow()},30000);
+
+$('resetEmailForm').onsubmit=async event=>{
+ event.preventDefault();if($('sendResetEmail').disabled)return;
+ const email=$('resetEmail').value.trim();if(!email||!$('resetEmail').checkValidity()){$('resetEmail').reportValidity();return}
+ $('sendResetEmail').disabled=true;$('resetEmailMessage').textContent='Sending reset request…';
+ try{const {error}=await cloud.auth.resetPasswordForEmail(email,{redirectTo:resetReturnURL});if(error)throw error;$('resetEmailMessage').textContent='If an account exists for this email, you’ll receive a password reset link. Check your inbox and spam folder. Open the newest link.'}
+ catch(e){$('resetEmailMessage').textContent='Could not request a reset: '+e.message+' Please try again later.'}
+ finally{$('sendResetEmail').disabled=false}
+};
+$('newPasswordForm').onsubmit=async event=>{
+ event.preventDefault();if($('saveNewPassword').disabled)return;
+ if(!cloudUser||recoveryUserId!==cloudUser.id){$('newPasswordMessage').textContent='Open a valid password reset email link first.';return}
+ const password=$('newPassword').value;
+ if(password.length<8){$('newPasswordMessage').textContent='Use at least 8 characters.';return}
+ if(password!==$('confirmPassword').value){$('newPasswordMessage').textContent='The passwords don’t match. Please enter them again.';return}
+ $('saveNewPassword').disabled=true;$('newPasswordMessage').textContent='Saving your password…';
+ try{const {error}=await cloud.auth.updateUser({password});if(error)throw error;
+  $('newPassword').value='';$('confirmPassword').value='';recoveryUserId=null;recoveryPending=false;try{sessionStorage.removeItem('wfw-password-recovery')}catch{}
+  $('newPasswordForm').hidden=true;$('newPasswordMessage').textContent='';$('authMessage').textContent='Password updated. Use your new password next time you sign in.';toast('Password updated successfully.');syncNow();
+ }catch(e){$('newPasswordMessage').textContent='Password was not changed: '+e.message+' If your link expired, request a new reset email.'}
+ finally{$('saveNewPassword').disabled=false}
+};
+// Supabase returns expired/used link errors in the URL. Do not display token values.
+const recoveryError=new URLSearchParams(location.hash?.slice(1)||'').has('error')||new URLSearchParams(location.search||'').has('error');
+if(recoveryError){recoveryPending=false;switchTab('settings');$('passwordReset').open=true;$('resetEmailMessage').textContent='This email link is invalid or has expired. Request a new password reset email below.';}

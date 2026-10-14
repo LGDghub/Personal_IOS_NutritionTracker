@@ -21,3 +21,5 @@ input:disabled{opacity:.55;cursor:not-allowed}
 
 /* Full product name stays readable on narrow phones. */
 header>div{min-width:0}header>.iconbutton{flex-shrink:0;margin-left:12px}h1{font-size:clamp(27px,7vw,36px)}.tracker-title{display:block;font-size:.62em;letter-spacing:-.5px;margin-top:3px}
+
+#newPasswordForm label,#resetEmailForm label{display:block;margin:12px 0}#passwordReset{border-top:1px solid var(--line);margin-top:14px;padding-top:4px}#newPasswordForm{border-color:var(--green)}
