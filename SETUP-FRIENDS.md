@@ -7,7 +7,7 @@ The stock counter, account-separated app, notification backend and ChatGPT serve
 - Supplement stock: choose a supplement, current quantity, unit, quantity used per tick, and low-stock threshold. Save again after restocking. Ticking deducts one dose; unticking restores it. Older ticks are included in the baseline, so enabling stock tracking does not subtract the whole history.
 - Water and low-stock push notifications: opt in, choose timezone/daytime hours and reminder interval, enable each device, then use Test notification. Water reminders stop once the last synced daily goal is reached. Stock reminders send once per stock reset/restock cycle. The scheduler checks every five minutes; the phone/browser ultimately controls delivery.
 - Account isolation: database rules restrict each account to its own rows; local caches switch with accounts; sign-out hides records and disables this device's push subscription. Friends start with empty meals/history and an editable shopping list. They must set their own targets and meal templates.
-- ChatGPT OAuth connection: private reading plus optional meal editing, explicit consent and revocation. The server derives the account from the verified token. It accepts no user-ID override. Meal edits validate inputs and the latest revision so concurrent changes cannot silently overwrite each other.
+- ChatGPT OAuth connection: private reading plus optional editing of meals, personal daily targets and Monday weigh-ins, with explicit consent and revocation. The server derives the account from the verified token. It accepts no user-ID override. Edits validate inputs and the latest revision so concurrent changes cannot silently overwrite each other.
 
 ## Owner setup: required before inviting friends
 
@@ -29,7 +29,7 @@ For extra password protection, the security advisor reports leaked-password chec
 2. Set personal targets, edit breakfast/lunch/dinner and tick “Use these meal details for future days too”. Their entries are not shared with other users.
 3. On iPhone, open in Safari → Share → Add to Home Screen, then launch that icon. Push requires iOS 16.4 or later. On supported Android browsers, use Install app/Add to Home Screen.
 4. In Settings → Your reminders, choose the reminder types and hours, save preferences, then Enable on this phone. Allow notifications and press Test notification. Permission is required on each device.
-5. In ChatGPT's custom app/MCP connector settings, add the URL below using OAuth. Sign in with **their tracker login**, then approve reading and optionally meal editing. Custom connector availability depends on the ChatGPT plan/workspace controls. They do not need your Supabase credentials or a shared API key.
+5. In ChatGPT's custom app/MCP connector settings, add the URL below using OAuth. Sign in with **their tracker login**, then separately approve reading, meal editing, and (if wanted) daily target and Monday weigh-in editing. An existing meal approval does not grant profile editing; revoke the existing connection in tracker Settings and reconnect to see the new consent checkbox. Open the connection's Manage menu in ChatGPT Plugins and select **Refresh** to discover the new tools. Custom connector availability depends on the ChatGPT plan/workspace controls. They do not need your Supabase credentials or a shared API key.
 
 ```
 https://zrtnabwryzbdqzwghxcp.supabase.co/functions/v1/wfw-mcp
@@ -39,8 +39,10 @@ Example requests:
 - “Check my water and meals today.”
 - “Save this lunch in my tracker for 15 October 2026: [portion and nutrition]. Mark it eaten.”
 - “Change my breakfast template to [food and macros] for future days.”
+- “Set my daily targets to [calories, protein, carbs, fat, fibre and litres of water].”
+- “Log my measured starting weight of [kg] for Monday [date].”
 
-ChatGPT should ask for missing portions/macros rather than inventing them. It must use the latest revision before writing. App Settings → Connect your ChatGPT provides a revoke button. Reconnecting with edit access may require revoking the earlier OAuth grant first.
+ChatGPT should ask for missing measurements and portions/macros rather than inventing them. It must use the latest revision before writing. Weigh-ins are Monday-only, including a starting weight. App Settings → Connect your ChatGPT provides a revoke button. Reconnecting with edit access may require revoking the earlier OAuth grant first.
 
 ## How it works, simply
 
