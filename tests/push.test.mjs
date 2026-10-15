@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {reminders,validSubscription} from '../server/push/logic.mjs';
+const p={timezone:'Europe/London',start_hour:9,end_hour:21,interval_minutes:120,water_enabled:true,stock_enabled:true};
+const s={settings:{goals:{water:3}},days:{'2026-10-15':{waterRecorded:true,water:1,goals:{water:3},supplements:{vitd:true}}},supplementStock:{vitd:{balance:6,dose:1,anchorCount:0,threshold:5,unit:'tablets',cycle:'one'}}};
+const n=reminders(p,s,new Date('2026-10-15T10:00:00Z'));assert.equal(n.length,2);assert.match(n[0].body,/2L left/);assert.match(n[1].body,/5 tablets/);
+assert.equal(reminders(p,s,new Date('2026-10-15T22:00:00Z')).length,0);
+s.days['2026-10-15'].water=3;assert.equal(reminders(p,s,new Date('2026-10-15T10:00:00Z')).length,1);
+const elsewhere=reminders({...p,timezone:'America/Los_Angeles'},s,new Date('2026-10-15T10:00:00Z'));assert.equal(elsewhere.length,0);
+assert.equal(reminders({...p,water_enabled:false,stock_enabled:false},s,new Date('2026-10-15T10:00:00Z')).length,0);
+assert.equal(validSubscription({endpoint:'https://127.0.0.1/secrets',keys:{p256dh:'a'.repeat(87),auth:'a'.repeat(22)}}),false);
+assert.equal(validSubscription({endpoint:'https://web.push.apple.com/test',keys:{p256dh:'a'.repeat(87),auth:'a'.repeat(22)}}),true);
+console.log('PASS: personal water goals, goal reached, stock thresholds, quiet hours, timezones, opt-out, push endpoint validation.');

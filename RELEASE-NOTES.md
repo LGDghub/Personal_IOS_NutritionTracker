@@ -1,3 +1,9 @@
+# v3.0 — private accounts, supplement stock and reminders
+
+Supplement inventory and low-stock notices; configurable personal water push reminders; separate local account caches; blank friend meal templates and editable shopping names; OAuth consent and a private ChatGPT MCP server with optional meal-only writes. Backend RLS and revision checks tested with temporary accounts. Existing Monday weigh-ins and password recovery preserved.
+
+Owner OAuth/email configuration and real phone delivery tests remain: see SETUP-FRIENDS.md. No existing tracking rows were replaced by this release.
+
 # Personal WFW Tracker 2.0
 
 Built by extending the October 13 Nutrition_OS_iPhone_PWA.zip package.

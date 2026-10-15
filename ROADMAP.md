@@ -1,27 +1,18 @@
-# Ideas saved for later
+# Personal WFW Tracker roadmap
 
-- Seven-day dashboard: meals, average calories/protein, water, supplements and weight.
+## Built in v3
+
+- Supplement stock with configurable dose units and reorder thresholds; ticks deduct, unticks restore, restock resets the baseline.
+- Personal water and low-stock push reminders, timezone and quiet hours, device opt-in.
+- Separate friend accounts, isolated device caches, blank starter meals and editable shopping names.
+- Private ChatGPT OAuth reading and optional meal updates; consent, revocation and conflict-safe writes.
+- Owner setup still required for OAuth/token hook and email sender; actual phone push/OAuth login await device verification. See SETUP-FRIENDS.md.
+
+## Later ideas
+
+- Seven-day dashboard improvements.
 - Saved foods and quick portion adjustment.
 - Better weight trend view.
 - Shopping quantities linked to planned meals.
-- Optional notifications.
-- Friends and an account-scoped ChatGPT connector: parked as a separate future project. Personal use is the current focus.
-- Shopping prices: user will maintain these manually; automatic Tesco updates are not planned.
 
-## Ideas noted on 14 October 2026 — not implemented or scheduled
-
-### Supplement stock and reorder reminders
-- Set starting stock separately for each supplement.
-- Taking one unit, or ticking its daily checkbox, deducts the configured dose (default one unit).
-- Unticking reverses that deduction; repeated syncs or reopening the app must not deduct twice.
-- Support adding stock after a purchase and correcting the count.
-- Set a low-stock threshold per supplement and remind the user to order more when reached.
-- Decide reminder delivery with the user before implementation. Avoid repeated alerts until restocked or explicitly snoozed.
-- Support appropriate units for powders as well as tablets/capsules.
-
-### Water push reminders
-- Optional phone push notifications stating the remaining water against that day's target.
-- Use the latest synced water record; offline edits may not yet be reflected.
-- User chooses the interval or reminder times and quiet hours before activation.
-- Stop reminders once the target is met, reset for the next local day, and allow pause/disable.
-- Obtain notification permission during setup.
+Tesco prices remain manually editable as requested. Automatic price updates are not planned.

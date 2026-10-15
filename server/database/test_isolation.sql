@@ -1,0 +1,41 @@
+begin;
+create temporary table wfw_test_ids(a uuid,b uuid);
+insert into wfw_test_ids values(gen_random_uuid(),gen_random_uuid());
+grant select on wfw_test_ids to authenticated;
+insert into auth.users(id,email) select a,a::text||'@example.invalid' from wfw_test_ids union all select b,b::text||'@example.invalid' from wfw_test_ids;
+insert into public.nutrition_state(user_id,payload) select id,'{"version":3,"days":{},"weights":{},"shop":{},"settings":{"goals":{"kcal":2000,"p":100,"c":200,"f":60,"fi":25,"water":2}},"templates":[{"id":"breakfast","name":"Breakfast","foods":[],"kcal":0,"p":0,"c":0,"f":0,"fi":0}],"supplementStock":{}}'::jsonb from(select a id from wfw_test_ids union all select b from wfw_test_ids) t;
+insert into public.wfw_notification_settings(user_id) select a from wfw_test_ids union all select b from wfw_test_ids;
+insert into public.wfw_connector_access(user_id,client_id,can_write) select a,'test-client',false from wfw_test_ids;
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object('sub',a,'role','authenticated')::text,true) from wfw_test_ids;
+do $$declare n integer;begin
+ select count(*) into n from public.nutrition_state;if n<>1 then raise exception 'Cross-account state read';end if;
+ select count(*) into n from public.wfw_notification_settings;if n<>1 then raise exception 'Cross-account settings read';end if;
+ update public.nutrition_state set payload=payload where user_id=(select b from wfw_test_ids);get diagnostics n=row_count;if n<>0 then raise exception 'Cross-account write';end if;
+ begin perform 1 from public.wfw_push_subscriptions;raise exception 'Subscriptions exposed';exception when insufficient_privilege then null;end;
+ begin insert into public.wfw_connector_access values((select b from wfw_test_ids),'bad',true,true);raise exception 'Grant escalation';exception when insufficient_privilege then null;end;
+end $$;
+select set_config('request.jwt.claims',jsonb_build_object('sub',a,'role','authenticated','client_id','test-client','resource','https://zrtnabwryzbdqzwghxcp.supabase.co/functions/v1/wfw-mcp')::text,true) from wfw_test_ids;
+do $$declare n integer;begin
+ select count(*) into n from public.nutrition_state;if n<>1 then raise exception 'Approved reader denied';end if;
+ update public.nutrition_state set payload=payload;get diagnostics n=row_count;if n<>0 then raise exception 'OAuth arbitrary write';end if;
+ update public.wfw_connector_access set can_write=true;get diagnostics n=row_count;if n<>0 then raise exception 'OAuth self escalation';end if;
+ select count(*) into n from public.wfw_notification_settings;if n<>0 then raise exception 'OAuth reminder access';end if;
+ begin perform public.wfw_update_meal('2026-10-15','{"id":"breakfast","name":"Test","foods":[],"kcal":100,"p":10,"c":10,"f":2,"fi":1}',true,false,1);raise exception 'Read-only edit succeeded';exception when insufficient_privilege then null;end;
+end $$;
+reset role;
+update public.wfw_connector_access set can_write=true where user_id=(select a from wfw_test_ids);
+set local role authenticated;
+do $$declare result jsonb;n integer;begin
+ result:=public.wfw_update_meal('2026-10-15','{"id":"breakfast","name":"Test","foods":[],"kcal":100,"p":10,"c":10,"f":2,"fi":1}',true,false,1);
+ if (result->>'revision')::int<>2 then raise exception 'Meal update failed';end if;
+ begin perform public.wfw_update_meal('2026-10-15','{"id":"breakfast","name":"Test","foods":[],"kcal":100,"p":10,"c":10,"f":2,"fi":1}',true,false,1);raise exception 'Stale write accepted';exception when serialization_failure then null;end;
+end $$;
+reset role;
+do $$begin if exists(select 1 from public.nutrition_state where user_id=(select b from wfw_test_ids) and revision<>1) then raise exception 'Another account changed';end if;end $$;
+delete from public.wfw_connector_access where user_id=(select a from wfw_test_ids);
+set local role authenticated;
+do $$declare n integer;begin select count(*) into n from public.nutrition_state;if n<>0 then raise exception 'Revoked connection still reads';end if;end $$;
+reset role;
+rollback;
+select 'PASS: cross-account reads/writes blocked, private subscriptions, OAuth read-only and meal-only writes, conflict protection, revocation' as result;

@@ -4,7 +4,7 @@ const root=path.join(__dirname,'..'),html=fs.readFileSync(path.join(root,'index.
 const ids=[...html.matchAll(/id="([^"]+)"/g)].map(x=>x[1]);
 function element(id){const fields={};return {id,value:'',textContent:'',innerHTML:'',style:{},dataset:{},hidden:false,checked:false,classList:{toggle(){}},setAttribute(){},removeAttribute(){},addEventListener(){},getContext(){return null},elements:{namedItem(name){return fields[name]??={value:'',checked:false}}},reset(){for(const f of Object.values(fields)){f.value='';f.checked=false}},showModal(){this.open=true},close(){this.open=false}}}
 const nodes=Object.fromEntries(ids.map(id=>[id,element(id)])),handlers={},storage=new Map(),notices=[];
-const context=vm.createContext({console,Date,JSON,Number,Set,Math,Object,Array,Error,Intl,URL,Blob,crypto:require('node:crypto').webcrypto,location:{protocol:'file:',reload(){}},navigator:{onLine:true},localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},matchMedia:()=>({matches:false,addEventListener(){}}),document:{getElementById:id=>{assert(nodes[id],id);return nodes[id]},documentElement:{dataset:{}},querySelector:()=>element('meta'),querySelectorAll:()=>[],addEventListener:(n,fn)=>handlers[n]=fn,hidden:false},window:{addEventListener(){},scrollTo(){}},setTimeout:()=>1,clearTimeout(){},setInterval(){},alert:m=>notices.push(m),confirm:()=>true});
+const context=vm.createContext({console,Date,JSON,Number,Set,Math,Object,Array,Error,Intl,URL,Blob,crypto:require('node:crypto').webcrypto,location:{protocol:'file:',reload(){}},navigator:{onLine:true},localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},matchMedia:()=>({matches:false,addEventListener(){}}),document:{body:{dataset:{}},getElementById:id=>{assert(nodes[id],id);return nodes[id]},documentElement:{dataset:{}},querySelector:()=>element('meta'),querySelectorAll:()=>[],addEventListener:(n,fn)=>handlers[n]=fn,hidden:false},window:{addEventListener(){},scrollTo(){}},setTimeout:()=>1,clearTimeout(){},setInterval(){},alert:m=>notices.push(m),confirm:()=>true});
 vm.runInContext(fs.readFileSync(path.join(root,'model.js'),'utf8')+'\n'+fs.readFileSync(path.join(root,'app.js'),'utf8'),context);
 
 let remote=null,writes=0,failWrite=false,authCallback;
@@ -27,9 +27,14 @@ const run=s=>vm.runInContext(s,context);
  // Concurrent edits cannot silently overwrite either copy.
  nodes.addWater.onclick();remote.payload.days[run('dayKey')].water=2;remote.revision++;let before=writes;await run('syncNow()');assert.equal(writes,before);assert.equal(nodes.syncConflict.hidden,false);assert.equal(nodes.water.value,1.25);
  nodes.useCloud.onclick();await new Promise(r=>setImmediate(r));assert.equal(nodes.water.value,2);
- // A second account cannot upload this device's data.
- authCallback('SIGNED_IN',{user:{id:'user-b',email:'other@example.com'}});before=writes;await run('syncNow()');assert.equal(writes,before);assert.match(nodes.syncStatus.textContent,/another account/);
- // Legacy/imported records without updatedAt are treated as data, never blank.
- run("syncMeta={};cloudUser={id:'user-a'};state.updatedAt=null;cloudConflict=null");await run('syncNow()');assert.equal(nodes.syncConflict.hidden,false);
+ // A second account starts empty and cannot inherit the first account's local records.
+ const accountA=copy(remote);remote=null;
+ authCallback('SIGNED_IN',{user:{id:'user-b',email:'other@example.com'}});
+ assert.equal(run('Object.keys(state.days).length'),0);assert.equal(nodes.water.value,'');
+ await run('syncNow()');assert.equal(Object.keys(remote.payload.days).length,0);
+ nodes.addWater.onclick();await run('syncNow()');assert.equal(nodes.water.value,.25);
+ remote=accountA;authCallback('SIGNED_IN',{user:{id:'user-a',email:'example@example.com'}});
+ await run('syncNow()');assert.equal(nodes.water.value,2);
+ authCallback('SIGNED_OUT',null);assert.equal(run('Object.keys(state.days).length'),0);assert.equal(nodes.water.value,'');assert.equal(run('accountReady'),false);
  console.log('PASS: initial upload, edits, offline retry, failed writes, cloud pull, conflict preservation, account isolation, legacy records.');
 })().catch(e=>{console.error(e);process.exitCode=1});

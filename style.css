@@ -23,3 +23,5 @@ input:disabled{opacity:.55;cursor:not-allowed}
 header>div{min-width:0}header>.iconbutton{flex-shrink:0;margin-left:12px}h1{font-size:clamp(27px,7vw,36px)}.tracker-title{display:block;font-size:.62em;letter-spacing:-.5px;margin-top:3px}
 
 #newPasswordForm label,#resetEmailForm label{display:block;margin:12px 0}#passwordReset{border-top:1px solid var(--line);margin-top:14px;padding-top:4px}#newPasswordForm{border-color:var(--green)}
+
+body[data-account="loading"] main,body[data-account="loading"] nav{visibility:hidden}body[data-account="signed-out"] #today,body[data-account="signed-out"] #history,body[data-account="signed-out"] #shop,body[data-account="signed-out"] #settings>*:not(#accountPanel):not(#newPasswordForm),body:not([data-account="signed-in"]) #backupTop,body[data-account="signed-out"] #export,body[data-account="signed-out"] .upload{display:none!important}body[data-account="signed-out"] #settings{display:block}#supplements small{display:block;color:var(--muted)}#stockForm label,#reminderForm label{margin-bottom:12px}#connectorPanel input{width:100%}
