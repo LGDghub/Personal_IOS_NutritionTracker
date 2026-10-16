@@ -1,5 +1,5 @@
 // Bump VERSION for each release. Waiting updates are applied by the user's Update button.
-const VERSION='v3.3.2';
+const VERSION='v3.3.3';
 const PREFIX='nutrition-os-'+encodeURIComponent(self.registration.scope)+'-';
 const CACHE=PREFIX+VERSION;
 const ASSETS=['./','./index.html','./style.css','./model.js','./app.js','./sync.js','./features.js','./vendor/supabase-2.117.3.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];

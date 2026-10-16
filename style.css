@@ -31,3 +31,9 @@ body[data-account="loading"] main,body[data-account="loading"] nav{visibility:hi
 .supprow{display:flex;align-items:center;gap:12px}.supprow .check{flex:1;min-width:0}.supprow .check span{overflow-wrap:anywhere}.supprow button{flex-shrink:0}.sectionhead:has(#addSupplement){flex-wrap:wrap;gap:10px}
 
 .suppactions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px 12px;max-width:130px}.supprow .suppactions button{padding:6px 0}
+
+/* Constrain Safari's native date field to the shopping card on narrow screens. */
+#shop .panel{min-width:0}
+#shopWeek{display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;min-height:46px;-webkit-appearance:none;appearance:none;text-align:left}
+#shopWeek::-webkit-date-and-time-value{min-width:0;text-align:left}
+#shopWeek::-webkit-datetime-edit{min-width:0;padding:0}
