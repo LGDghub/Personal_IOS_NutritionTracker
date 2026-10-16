@@ -1,0 +1,13 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Update Personal WFW Tracker</title><style>body{font:18px system-ui;background:#101c23;color:#eff5f6;max-width:540px;margin:60px auto;padding:24px}button,a{font:inherit;color:inherit}button{padding:14px;background:#294b54;border:1px solid #63818a;border-radius:10px}a{display:block;margin-top:24px}</style><h1>Update your tracker</h1><p>This refreshes the app files. Your saved records and login stay in place.</p><button id="repair">Download and apply update</button><p id="status" role="status"></p><a href="./">Back to tracker</a><script>
+const button=document.getElementById('repair'),status=document.getElementById('status');
+button.onclick=async()=>{button.disabled=true;status.textContent='Checking and downloading…';try{
+ if(!('serviceWorker' in navigator))throw Error('Open this page in Safari or Chrome.');
+ const reg=await navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'});
+ const apply=()=>{if(reg.waiting){status.textContent='Applying update…';reg.waiting.postMessage({type:'SKIP_WAITING'});return true}return false};
+ let timer;const watch=()=>{if(apply())return;const w=reg.installing;if(w)w.addEventListener('statechange',()=>{if(w.state==='installed')setTimeout(apply,0);if(w.state==='redundant'){status.textContent='Download failed. Check your connection and try again.';button.disabled=false}})};
+ navigator.serviceWorker.addEventListener('controllerchange',()=>{clearTimeout(timer);location.replace('./')},{once:true});
+ reg.addEventListener('updatefound',watch);watch();await reg.update();watch();
+ if(!reg.installing&&!reg.waiting){status.textContent='Latest app files are active. Opening tracker…';location.replace('./');return}
+ timer=setTimeout(()=>{status.textContent='The download is taking longer than expected. Keep this page open or try again when online.';button.disabled=false},45000);
+ }catch(e){status.textContent=e.message;button.disabled=false}};
+</script></html>
