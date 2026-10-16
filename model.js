@@ -17,7 +17,7 @@ function dateNumber(s){return Date.parse(s+'T12:00:00Z')/86400000}
 function sumMeals(meals){return meals.reduce((t,m)=>{for(const k of MACROS)t[k]=round(t[k]+m[k]);return t},Object.fromEntries(MACROS.map(k=>[k,0])))}
 const DEFAULT_GOALS={...sumMeals(MEALS),water:3.5};
 const DEFAULT_SHOP=SHOP.map(([name,price])=>({name,price:Number(price.replace('£',''))}));
-function freshState(){return {version:3,supplementStock:{},days:{},weights:{},shop:{},shoppingWeeks:{},shoppingItems:clone(DEFAULT_SHOP),templates:clone(MEALS),settings:{theme:'dark',goals:clone(DEFAULT_GOALS)},updatedAt:null}}
+function freshState(){return {version:3,shoppingFormat:1,supplementStock:{},days:{},weights:{},shop:{},shoppingWeeks:{},shoppingItems:clone(DEFAULT_SHOP),templates:clone(MEALS),settings:{theme:'dark',goals:clone(DEFAULT_GOALS)},updatedAt:null}}
 function assert(ok,message){if(!ok)throw Error(message)}
 function record(x){return x!==null&&typeof x==='object'&&!Array.isArray(x)}
 function number(x,min,max,label){assert(typeof x==='number'&&Number.isFinite(x)&&x>=min&&x<=max,`Invalid ${label}`);return x}
@@ -33,10 +33,10 @@ function normalize(raw){
  if(raw.version>=2){
   assert(record(raw.settings)&&['dark','light','system'].includes(raw.settings.theme),'Invalid settings');s.settings={theme:raw.settings.theme,goals:safeGoals(raw.settings.goals)};
   s.templates=safeMeals(raw.templates);assert(s.templates.length===3&&MEALS.every(m=>s.templates.some(t=>t.id===m.id)),'Missing default meals');
-  assert(Array.isArray(raw.shoppingItems)&&raw.shoppingItems.length===DEFAULT_SHOP.length,'Invalid shopping list');
+  assert(Array.isArray(raw.shoppingItems)&&raw.shoppingItems.length<=200,'Invalid shopping list');
   s.shoppingItems=raw.shoppingItems.map(i=>{assert(record(i)&&typeof i.name==='string'&&i.name.length<=200,'Invalid shopping item');return {name:i.name,price:number(i.price,0,10000,'price')}});
   assert(record(raw.shoppingWeeks),'Invalid shopping weeks');
-  for(const [wk,ticks] of Object.entries(raw.shoppingWeeks)){assert(validDate(wk)&&weekStart(wk)===wk,'Invalid shopping week');s.shoppingWeeks[wk]=safeTicks(ticks,DEFAULT_SHOP.map((_,i)=>String(i)))}
+  for(const [wk,ticks] of Object.entries(raw.shoppingWeeks)){assert(validDate(wk)&&weekStart(wk)===wk,'Invalid shopping week');s.shoppingWeeks[wk]=safeTicks(ticks,s.shoppingItems.map((_,i)=>String(i)))}
  }
  assert(Object.keys(raw.days).length<=30000&&Object.keys(raw.weights).length<=30000,'Too many records');
  for(const [date,d] of Object.entries(raw.days)){
@@ -46,7 +46,7 @@ function normalize(raw){
   s.days[date]=out;
  }
  for(const [date,w] of Object.entries(raw.weights)){assert(validDate(date),'Invalid weigh-in date');s.weights[date]=number(w,30,250,'weight')}
- s.shop=safeTicks(raw.shop,DEFAULT_SHOP.map((_,i)=>String(i)));
+ s.shop=safeTicks(raw.shop,(raw.version>=2?s.shoppingItems:DEFAULT_SHOP).map((_,i)=>String(i)));
  if(!(raw.version>=2)&&Object.keys(s.shop).length)s.shoppingWeeks[weekStart(localDay())]=clone(s.shop);
  if(raw.version===3){assert(record(raw.supplementStock),'Invalid stock');for(const [id,v] of Object.entries(raw.supplementStock)){assert(SUPPS.some(x=>x[0]===id)&&record(v),'Invalid supplement');s.supplementStock[id]={balance:number(v.balance,0,100000,'stock'),dose:number(v.dose,.01,10000,'dose'),threshold:number(v.threshold,0,100000,'threshold'),anchorCount:number(v.anchorCount,0,30000,'stock baseline'),unit:String(v.unit).slice(0,30),cycle:String(v.cycle).slice(0,80)}}}
  s.updatedAt=typeof raw.updatedAt==='string'?raw.updatedAt:null;return s;
@@ -59,3 +59,10 @@ function supplementTicks(s,id){return Object.values(s.days).filter(d=>d.suppleme
 function stockRemaining(s,id){const v=s.supplementStock[id];return v?round(v.balance-v.dose*(supplementTicks(s,id)-v.anchorCount)):null}
 function setStock(s,id,balance,dose,threshold,unit,cycle){assert(SUPPS.some(x=>x[0]===id),'Unknown supplement');s.supplementStock[id]={balance:number(balance,0,100000,'stock'),dose:number(dose,.01,10000,'dose'),threshold:number(threshold,0,100000,'threshold'),unit:String(unit).slice(0,30),anchorCount:supplementTicks(s,id),cycle};return s}
 function newAccountState(){const s=freshState();s.templates=s.templates.map(m=>({...m,foods:[],kcal:0,p:0,c:0,f:0,fi:0}));s.shoppingItems=s.shoppingItems.map(()=>({name:'Edit your shopping item',price:0}));return s}
+
+function removeShoppingItem(s,index){
+ assert(Number.isInteger(index)&&index>=0&&index<s.shoppingItems.length,'Invalid shopping index');
+ const remap=ticks=>Object.fromEntries(Object.entries(ticks).filter(([k])=>Number(k)!==index).map(([k,v])=>[String(Number(k)>index?Number(k)-1:Number(k)),v]));
+ s.shoppingItems.splice(index,1);s.shop=remap(s.shop);
+ for(const wk of Object.keys(s.shoppingWeeks))s.shoppingWeeks[wk]=remap(s.shoppingWeeks[wk]);
+}

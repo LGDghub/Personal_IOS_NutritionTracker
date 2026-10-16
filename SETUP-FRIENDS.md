@@ -60,3 +60,11 @@ GitHub stores the app's code and publishes the website. Installing it adds a Hom
 ## Verification performed
 
 Model/UI harness tests cover existing meals, water, Monday weigh-ins, backups, password recovery and sync conflicts. New tests cover stock baseline/undo/restock, account switching, timezone windows, target completion and push endpoint allowlisting. Transactional database tests used temporary users and rolled everything back: cross-account read/write denial, private subscriptions, read-only OAuth, meal-only writes, stale revision rejection and revocation all passed. Live endpoints reject unauthenticated access. Full OAuth login and actual phone delivery require the owner settings/device steps above and are not yet end-to-end verified.
+
+## Shopping controls (v3.2)
+
+Update the installed app, then in Settings → Connect your ChatGPT select **Allow ChatGPT to edit my shopping list**. Refresh the WFW connection in ChatGPT Plugins and start a new chat. New connections can grant shopping access on the consent screen.
+
+ChatGPT can read the list and weekly purchase status, add/remove/reorder items, change quantities in the item name, edit manual GBP line prices, and tick or untick purchases for a selected week. Changes affect only the signed-in account. Prices are manually supplied; there is no automatic Tesco price feed. The same items and prices are shown across weeks; purchase ticks are separate for each week. Changing meals does not automatically rebuild the shopping list. Ask explicitly to prepare and save a list.
+
+The app also supports Add item and Remove in Shopping. Existing item ticks are retained correctly when a list is reordered or items are removed. List edits check the latest cloud revision to avoid overwriting concurrent changes. Older app versions must update before saving after a flexible shopping list has synced.

@@ -1,0 +1,26 @@
+const {readFileSync}=require('node:fs');
+const vm=require('node:vm');
+const testAssert=require('node:assert/strict');
+const code=readFileSync(require('node:path').join(__dirname,'../model.js'),'utf8');
+vm.runInNewContext(code+`
+const s=freshState();
+s.shoppingItems=[{name:'A',price:1.10},{name:'B',price:2.20},{name:'C',price:3.30}];
+s.shoppingWeeks={'2026-10-12':{'0':true,'1':false,'2':true},'2026-10-05':{'1':true,'2':false}};
+s.shop={'0':true,'2':true};
+removeShoppingItem(s,1);
+testAssert.equal(s.shoppingItems.length,2);
+testAssert.equal(s.shoppingItems[1].name,'C');
+testAssert.equal(s.shoppingWeeks['2026-10-12']['1'],true);
+testAssert.equal(s.shoppingWeeks['2026-10-05']['1'],false);
+testAssert.equal(s.shop['1'],true);
+testAssert.equal(normalize(s).shoppingItems.length,2);
+removeShoppingItem(s,1);removeShoppingItem(s,0);
+testAssert.equal(normalize(s).shoppingItems.length,0);
+testAssert.equal(Object.keys(s.shoppingWeeks['2026-10-12']).length,0);
+const old=freshState();delete old.shoppingFormat;
+testAssert.equal(normalize(old).shoppingFormat,1);
+const many=freshState();many.shoppingItems=Array.from({length:200},(_,i)=>({name:'Item '+i,price:1}));
+testAssert.equal(normalize(many).shoppingItems.length,200);
+many.shoppingItems.push({name:'Too many',price:1});testAssert.throws(()=>normalize(many));
+console.log('PASS: variable shopping lists, empty list, legacy format, tick remapping and list limits.');
+`,{console,testAssert});
