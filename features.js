@@ -1,7 +1,7 @@
 'use strict';
 const PUSH_URL='https://zrtnabwryzbdqzwghxcp.supabase.co/functions/v1/wfw-push';
-$('stockId').innerHTML=SUPPS.map(([id,label])=>`<option value="${id}">${escapeHTML(label)}</option>`).join('');
-function stockFields(){const id=$('stockId').value,v=state.supplementStock[id];$('stockBalance').value=v?Math.max(0,stockRemaining(state,id)):'';$('stockDose').value=v?.dose||1;$('stockThreshold').value=v?.threshold??5;$('stockUnit').value=v?.unit||'doses'}
+renderStockOptions();
+function stockFields(){renderStockOptions();const id=$('stockId').value,v=state.supplementStock[id];$('stockBalance').value=v?Math.max(0,stockRemaining(state,id)):'';$('stockDose').value=v?.dose||1;$('stockThreshold').value=v?.threshold??5;$('stockUnit').value=v?.unit||'doses'}
 $('stockId').onchange=stockFields;
 $('stockForm').onsubmit=e=>{e.preventDefault();if(!accountReady)return;try{setStock(state,$('stockId').value,Number($('stockBalance').value),Number($('stockDose').value),Number($('stockThreshold').value),$('stockUnit').value,crypto.randomUUID());save();renderToday();$('stockMessage').textContent='Stock saved. Future ticks deduct from this amount.'}catch(e){$('stockMessage').textContent=e.message}};
 async function pushAPI(action,body={}){const {data:{session}}=await cloud.auth.getSession();if(!session)throw Error('Sign in first');const response=await fetch(PUSH_URL+'/'+action,{method:'POST',headers:{'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json'},body:JSON.stringify(body)});const result=await response.json();if(!response.ok)throw Error(result.error||'Request failed');return result}

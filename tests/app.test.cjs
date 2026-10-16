@@ -22,3 +22,15 @@ assert.equal(nodes.calories.textContent,'100');assert(nodes.mealCards.innerHTML.
 nodes.theme.onchange({target:{value:'light'}});assert.equal(context.document.documentElement.dataset.theme,'light');
 nodes.prevDay.onclick();assert.equal(nodes.calories.textContent,'0');nodes.goToday.onclick();assert.equal(nodes.calories.textContent,'100');
 console.log('PASS: app startup, meal check/uncheck, water, Monday-only weight, custom food, escaping, themes, day navigation and persistence.');
+
+context.prompt=()=>'<Zinc>';
+nodes.addSupplement.onclick();
+assert(nodes.supplements.innerHTML.includes('&lt;Zinc&gt;'));
+assert(nodes.stockId.innerHTML.includes('&lt;Zinc&gt;'));
+const supplementId=vm.runInContext('state.supplementItems.at(-1)[0]',context);
+handlers.change({target:{dataset:{supp:supplementId},checked:true}});
+context.prompt=()=>'Zinc daily';
+handlers.click({target:{closest:()=>({dataset:{suppedit:supplementId}})}});
+assert(nodes.supplements.innerHTML.includes('Zinc daily'));
+assert.equal(vm.runInContext('readDay().supplements[state.supplementItems.at(-1)[0]]',context),true);
+assert.equal(JSON.parse(storage.get(vm.runInContext('KEY',context))).supplementItems.at(-1)[1],'Zinc daily');

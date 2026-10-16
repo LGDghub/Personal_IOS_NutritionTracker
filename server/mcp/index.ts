@@ -90,7 +90,7 @@ Deno.serve(async req=>{const path=new URL(req.url).pathname;
   const cents=(list:any[])=>list.reduce((n,i)=>n+Math.round(i.price*100),0)/100;
   output={...output,week_start:args.week_start,currency:'GBP',prices:'manual line totals',items,total:cents(items),remaining:cents(items.filter((i:any)=>!i.purchased))};
  }
- if(name==='get_profile')output={...output,goals:s.settings.goals,supplementStock:Object.fromEntries(Object.entries(s.supplementStock||{}).map(([id,v]:[string,any])=>[id,{...v,remaining:Math.round((v.balance-v.dose*(Object.values(s.days).filter((d:any)=>d.supplements?.[id]).length-v.anchorCount))*100)/100}]))};
+ if(name==='get_profile')output={...output,goals:s.settings.goals,supplementItems:s.supplementItems||[['creatine','Creatine · 5g'],['vitd','Vitamin D3'],['omega','Omega-3'],['mag','Magnesium · optional']],supplementStock:Object.fromEntries(Object.entries(s.supplementStock||{}).map(([id,v]:[string,any])=>[id,{...v,remaining:Math.round((v.balance-v.dose*(Object.values(s.days).filter((d:any)=>d.supplements?.[id]).length-v.anchorCount))*100)/100}]))};
  if(name==='get_meal_templates')output={...output,meals:s.templates};
  if(name==='get_nutrition_records'){if(!date(args.start_date)||!date(args.end_date)||args.end_date<args.start_date||(Date.parse(args.end_date)-Date.parse(args.start_date))/86400000>89)throw Error('Choose a valid range of up to 90 days');output={...output,days:Object.fromEntries(Object.entries(s.days).filter(([d])=>d>=args.start_date&&d<=args.end_date)),weights:Object.fromEntries(Object.entries(s.weights).filter(([d])=>d>=args.start_date&&d<=args.end_date))}}
  return result({content:[{type:'text',text:JSON.stringify(output)}]});
