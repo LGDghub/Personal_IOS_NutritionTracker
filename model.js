@@ -58,7 +58,7 @@ function weekSummary(s,start){const dates=Array.from({length:7},(_,i)=>shiftDate
 
 function supplementTicks(s,id){return Object.values(s.days).filter(d=>d.supplements[id]).length}
 function stockRemaining(s,id){const v=s.supplementStock[id];return v?round(v.balance-v.dose*(supplementTicks(s,id)-v.anchorCount)):null}
-function setStock(s,id,balance,dose,threshold,unit,cycle){assert(s.supplementItems.some(x=>x[0]===id),'Unknown supplement');s.supplementStock[id]={balance:number(balance,0,100000,'stock'),dose:number(dose,.01,10000,'dose'),threshold:number(threshold,0,100000,'threshold'),unit:String(unit).slice(0,30),anchorCount:supplementTicks(s,id),cycle};return s}
+function setStock(s,id,balance,dose,threshold,unit,cycle){assert(s.supplementItems.some(x=>x[0]===id&&!x[2]),'Unknown supplement');s.supplementStock[id]={balance:number(balance,0,100000,'stock'),dose:number(dose,.01,10000,'dose'),threshold:number(threshold,0,100000,'threshold'),unit:String(unit).slice(0,30),anchorCount:supplementTicks(s,id),cycle};return s}
 function newAccountState(){const s=freshState();s.templates=s.templates.map(m=>({...m,foods:[],kcal:0,p:0,c:0,f:0,fi:0}));s.shoppingItems=s.shoppingItems.map(()=>({name:'Edit your shopping item',price:0}));return s}
 
 function removeShoppingItem(s,index){
@@ -70,8 +70,15 @@ function removeShoppingItem(s,index){
 
 function safeSupplements(items){
  assert(Array.isArray(items)&&items.length<=200,'Maximum 200 supplements');
- const out=items.map(v=>{assert(Array.isArray(v)&&v.length===2&&typeof v[0]==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(v[0])&&!['__proto__','constructor','prototype'].includes(v[0]),'Invalid supplement ID');assert(typeof v[1]==='string'&&v[1].trim().length>0&&v[1].length<=100,'Enter a supplement name of 1–100 characters');return [v[0],v[1].trim()]});
+ const out=items.map(v=>{assert(Array.isArray(v)&&(v.length===2||v.length===3&&v[2]===true)&&typeof v[0]==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(v[0])&&!['__proto__','constructor','prototype'].includes(v[0]),'Invalid supplement ID');assert(typeof v[1]==='string'&&v[1].trim().length>0&&v[1].length<=100,'Enter a supplement name of 1–100 characters');return v[2]===true?[v[0],v[1].trim(),true]:[v[0],v[1].trim()]});
  assert(new Set(out.map(v=>v[0])).size===out.length,'Duplicate supplement IDs');return out;
 }
 function addSupplement(s,id,name){s.supplementItems=safeSupplements([...s.supplementItems,[id,name]])}
 function renameSupplement(s,id,name){assert(s.supplementItems.some(v=>v[0]===id),'Unknown supplement');s.supplementItems=safeSupplements(s.supplementItems.map(v=>v[0]===id?[id,name]:v))}
+
+function activeSupplements(s){return s.supplementItems.filter(v=>!v[2])}
+function removeSupplement(s,id){
+ assert(activeSupplements(s).some(v=>v[0]===id),'Unknown supplement');
+ s.supplementItems=s.supplementItems.map(v=>v[0]===id?[v[0],v[1],true]:v);
+ delete s.supplementStock[id];
+}

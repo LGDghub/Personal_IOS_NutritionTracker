@@ -29,3 +29,5 @@ body[data-account="loading"] main,body[data-account="loading"] nav{visibility:hi
 .shoprow{display:grid;grid-template-columns:minmax(0,1fr) 90px}.shoprow>.check{grid-column:1;grid-row:1}.shoprow>.shopprice{grid-column:2;grid-row:1}.shoprow>button{justify-self:start}.shoprow>button[data-shopremove]{justify-self:end}.sectionhead:has(#addShop){flex-wrap:wrap}.sectionhead:has(#addShop)>h2{flex:1 0 100%}
 
 .supprow{display:flex;align-items:center;gap:12px}.supprow .check{flex:1;min-width:0}.supprow .check span{overflow-wrap:anywhere}.supprow button{flex-shrink:0}.sectionhead:has(#addSupplement){flex-wrap:wrap;gap:10px}
+
+.suppactions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px 12px;max-width:130px}.supprow .suppactions button{padding:6px 0}

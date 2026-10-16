@@ -34,3 +34,10 @@ handlers.click({target:{closest:()=>({dataset:{suppedit:supplementId}})}});
 assert(nodes.supplements.innerHTML.includes('Zinc daily'));
 assert.equal(vm.runInContext('readDay().supplements[state.supplementItems.at(-1)[0]]',context),true);
 assert.equal(JSON.parse(storage.get(vm.runInContext('KEY',context))).supplementItems.at(-1)[1],'Zinc daily');
+
+handlers.click({target:{closest:()=>({dataset:{suppremove:supplementId}})}});
+assert(!nodes.supplements.innerHTML.includes('Zinc daily'));
+assert(!nodes.stockId.innerHTML.includes('Zinc daily'));
+assert.equal(vm.runInContext('readDay().supplements[state.supplementItems.at(-1)[0]]',context),true);
+vm.runInContext('for(const [id] of activeSupplements(state))removeSupplement(state,id);render()',context);
+assert.equal(nodes.stockPanel.hidden,true);
