@@ -1,3 +1,15 @@
+# Align by Daly 4.1.0 — Together identity and blank personal setup
+
+- Replaced the A icon with chosen concept 18: emerald background, cream check, and cream/mint/blue circle segments. Updated SVG, 192px and 512px install icons.
+- Refreshed light and dark themes to match the logo; light is the starting theme for new accounts. Existing theme choices remain.
+- Added fixed bottom icon navigation for Today, Progress, Shopping and Connect, with phone safe-area spacing. Sync and settings cog remain at the top.
+- New accounts have no preset supplements, stock, shopping items, history, weights or personal calorie/macro/water targets. Breakfast/lunch/dinner remain empty editable meal slots.
+- Added a Today-screen target setup shortcut, empty list guidance and clear unset-target labels. Food and water can be logged before targets are set. Unset goals do not count as achieved.
+- Preserved existing accounts and legacy backup interpretation; no existing user records were cleared or automatically reset.
+- Updated welcome wording, brand wordmark and service-worker release to v4.1.0.
+- Tests: all eight Node test files pass, including empty-account sync, switching accounts, preservation of existing records, target validation, historical summaries and no water reminders for unset targets.
+- Domain remains unchanged pending purchase. Existing home-screen icons may require reinstalling the shortcut after syncing to pick up the new icon.
+
 # v3.0 — private accounts, supplement stock and reminders
 
 Supplement inventory and low-stock notices; configurable personal water push reminders; separate local account caches; blank friend meal templates and editable shopping names; OAuth consent and a private ChatGPT MCP server with optional meal-only writes. Backend RLS and revision checks tested with temporary accounts. Existing Monday weigh-ins and password recovery preserved.

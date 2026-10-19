@@ -23,7 +23,7 @@ function record(x){return x!==null&&typeof x==='object'&&!Array.isArray(x)}
 function number(x,min,max,label){assert(typeof x==='number'&&Number.isFinite(x)&&x>=min&&x<=max,`Invalid ${label}`);return x}
 function safeMeal(m){assert(record(m)&&typeof m.id==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(m.id)&&!['__proto__','constructor','prototype'].includes(m.id),'Invalid food ID');assert(typeof m.name==='string'&&m.name.trim().length>0&&m.name.length<=100,'Invalid food name');assert(Array.isArray(m.foods)&&m.foods.length<=100&&m.foods.every(f=>typeof f==='string'&&f.length<=1500),'Invalid ingredients');const out={id:m.id,name:m.name,foods:[...m.foods]};for(const k of MACROS)out[k]=number(m[k],0,k==='kcal'?20000:2000,k);return out}
 function safeMeals(list){assert(Array.isArray(list)&&list.length<=200,'Invalid meals');const out=list.map(safeMeal);assert(new Set(out.map(m=>m.id)).size===out.length,'Duplicate food IDs');return out}
-function safeGoals(g){assert(record(g),'Invalid targets');const out={};for(const k of MACROS)out[k]=number(g[k],k==='kcal'?1:0,k==='kcal'?20000:2000,'target '+k);out.water=number(g.water,.25,10,'water target');assert(Math.abs(out.water*4-Math.round(out.water*4))<.0001,'Water target must use 250ml steps');return out}
+function safeGoals(g,allowUnset=false){assert(record(g),'Invalid targets');if(allowUnset&&[...MACROS,'water'].every(k=>g[k]===0))return Object.fromEntries([...MACROS,'water'].map(k=>[k,0]));const out={};for(const k of MACROS)out[k]=number(g[k],k==='kcal'?1:0,k==='kcal'?20000:2000,'target '+k);out.water=number(g.water,.25,10,'water target');assert(Math.abs(out.water*4-Math.round(out.water*4))<.0001,'Water target must use 250ml steps');return out}
 function safeTicks(obj,keys){assert(record(obj),'Invalid checkboxes');const out={};for(const [k,v] of Object.entries(obj)){assert(keys.includes(k)&&typeof v==='boolean','Invalid checkbox');out[k]=v}return out}
 function makeDay(state){return {meals:clone(state.templates),completed:{},supplements:{},water:0,waterRecorded:false,goals:clone(state.settings.goals),updatedAt:null}}
 function normalize(raw){
@@ -32,7 +32,7 @@ function normalize(raw){
  const s=freshState();
  if(raw.supplementItems!==undefined)s.supplementItems=safeSupplements(raw.supplementItems);
  if(raw.version>=2){
-  assert(record(raw.settings)&&['dark','light','system'].includes(raw.settings.theme),'Invalid settings');s.settings={theme:raw.settings.theme,goals:safeGoals(raw.settings.goals)};
+  assert(record(raw.settings)&&['dark','light','system'].includes(raw.settings.theme),'Invalid settings');s.settings={theme:raw.settings.theme,goals:safeGoals(raw.settings.goals,true)};
   s.templates=safeMeals(raw.templates);assert(s.templates.length===3&&MEALS.every(m=>s.templates.some(t=>t.id===m.id)),'Missing default meals');
   assert(Array.isArray(raw.shoppingItems)&&raw.shoppingItems.length<=200,'Invalid shopping list');
   s.shoppingItems=raw.shoppingItems.map(i=>{assert(record(i)&&typeof i.name==='string'&&i.name.length<=200,'Invalid shopping item');return {name:i.name,price:number(i.price,0,10000,'price')}});
@@ -42,7 +42,7 @@ function normalize(raw){
  assert(Object.keys(raw.days).length<=30000&&Object.keys(raw.weights).length<=30000,'Too many records');
  for(const [date,d] of Object.entries(raw.days)){
   assert(validDate(date)&&record(d),'Invalid daily record');const out=makeDay(s);
-  if(raw.version>=2){out.meals=safeMeals(d.meals);out.completed=safeTicks(d.completed,out.meals.map(m=>m.id));out.supplements=safeTicks(d.supplements,s.supplementItems.map(s=>s[0]));out.goals=safeGoals(d.goals);out.water=number(d.water,0,10,'water');assert(typeof d.waterRecorded==='boolean','Invalid water status');out.waterRecorded=d.waterRecorded;out.updatedAt=typeof d.updatedAt==='string'?d.updatedAt:null;}
+  if(raw.version>=2){out.meals=safeMeals(d.meals);out.completed=safeTicks(d.completed,out.meals.map(m=>m.id));out.supplements=safeTicks(d.supplements,s.supplementItems.map(s=>s[0]));out.goals=safeGoals(d.goals,true);out.water=number(d.water,0,10,'water');assert(typeof d.waterRecorded==='boolean','Invalid water status');out.waterRecorded=d.waterRecorded;out.updatedAt=typeof d.updatedAt==='string'?d.updatedAt:null;}
   else{out.meals=clone(MEALS);out.goals=clone(DEFAULT_GOALS);for(const m of MEALS){if(d[m.id]!==undefined){assert(typeof d[m.id]==='boolean','Invalid meal tick');out.completed[m.id]=d[m.id]}}for(const [id] of SUPPS){if(d[id]!==undefined){assert(typeof d[id]==='boolean','Invalid supplement tick');out.supplements[id]=d[id]}}if(d.water!==undefined){out.water=number(d.water,0,10,'water');out.waterRecorded=true}}
   s.days[date]=out;
  }
@@ -53,13 +53,13 @@ function normalize(raw){
  s.updatedAt=typeof raw.updatedAt==='string'?raw.updatedAt:null;return s;
 }
 function totals(d){const eaten=d.meals.filter(m=>d.completed[m.id]);return {...sumMeals(eaten),count:eaten.filter(m=>MEALS.some(base=>base.id===m.id)).length,foods:eaten.length}}
-function dailySummary(s,date){const d=s.days[date];if(!d)return {date,logged:false,weightKg:s.weights[date]??null};const t=totals(d);return {date,logged:true,...t,waterLitres:d.waterRecorded?d.water:null,waterGoalLitres:d.goals.water,waterGoalMet:d.waterRecorded?d.water>=d.goals.water:null,calorieGoalMet:t.kcal>=d.goals.kcal,proteinGoalMet:t.p>=d.goals.p,targets:clone(d.goals),weightKg:s.weights[date]??null,meals:d.meals.map(m=>({...clone(m),eaten:!!d.completed[m.id]})),supplements:clone(d.supplements),updatedAt:d.updatedAt}}
-function weekSummary(s,start){const dates=Array.from({length:7},(_,i)=>shiftDate(start,i));const logged=dates.filter(d=>s.days[d]);const waterDays=logged.filter(d=>s.days[d].waterRecorded);const weights=dates.filter(d=>s.weights[d]!==undefined).map(d=>s.weights[d]);return {start,dates,loggedDays:logged.length,avgKcal:logged.length?Math.round(logged.reduce((n,d)=>n+totals(s.days[d]).kcal,0)/logged.length):null,completeDays:logged.filter(d=>totals(s.days[d]).count===3).length,waterLoggedDays:waterDays.length,waterGoalDays:waterDays.filter(d=>s.days[d].water>=s.days[d].goals.water).length,avgWeight:weights.length?round(weights.reduce((a,b)=>a+b,0)/weights.length):null}}
+function dailySummary(s,date){const d=s.days[date];if(!d)return {date,logged:false,weightKg:s.weights[date]??null};const t=totals(d);return {date,logged:true,...t,waterLitres:d.waterRecorded?d.water:null,waterGoalLitres:d.goals.water,waterGoalMet:d.waterRecorded&&d.goals.water>0?d.water>=d.goals.water:null,calorieGoalMet:d.goals.kcal>0?t.kcal>=d.goals.kcal:null,proteinGoalMet:d.goals.kcal>0?t.p>=d.goals.p:null,targets:clone(d.goals),weightKg:s.weights[date]??null,meals:d.meals.map(m=>({...clone(m),eaten:!!d.completed[m.id]})),supplements:clone(d.supplements),updatedAt:d.updatedAt}}
+function weekSummary(s,start){const dates=Array.from({length:7},(_,i)=>shiftDate(start,i));const logged=dates.filter(d=>s.days[d]);const waterDays=logged.filter(d=>s.days[d].waterRecorded);const weights=dates.filter(d=>s.weights[d]!==undefined).map(d=>s.weights[d]);return {start,dates,loggedDays:logged.length,avgKcal:logged.length?Math.round(logged.reduce((n,d)=>n+totals(s.days[d]).kcal,0)/logged.length):null,completeDays:logged.filter(d=>totals(s.days[d]).count===3).length,waterLoggedDays:waterDays.length,waterGoalDays:waterDays.filter(d=>s.days[d].goals.water>0&&s.days[d].water>=s.days[d].goals.water).length,avgWeight:weights.length?round(weights.reduce((a,b)=>a+b,0)/weights.length):null}}
 
 function supplementTicks(s,id){return Object.values(s.days).filter(d=>d.supplements[id]).length}
 function stockRemaining(s,id){const v=s.supplementStock[id];return v?round(v.balance-v.dose*(supplementTicks(s,id)-v.anchorCount)):null}
 function setStock(s,id,balance,dose,threshold,unit,cycle){assert(s.supplementItems.some(x=>x[0]===id&&!x[2]),'Unknown supplement');s.supplementStock[id]={balance:number(balance,0,100000,'stock'),dose:number(dose,.01,10000,'dose'),threshold:number(threshold,0,100000,'threshold'),unit:String(unit).slice(0,30),anchorCount:supplementTicks(s,id),cycle};return s}
-function newAccountState(){const s=freshState();s.templates=s.templates.map(m=>({...m,foods:[],kcal:0,p:0,c:0,f:0,fi:0}));s.shoppingItems=s.shoppingItems.map(()=>({name:'Edit your shopping item',price:0}));return s}
+function newAccountState(){const s=freshState();s.templates=s.templates.map(m=>({...m,foods:[],kcal:0,p:0,c:0,f:0,fi:0}));s.shoppingItems=[];s.supplementItems=[];s.settings={theme:'light',goals:Object.fromEntries([...MACROS,'water'].map(k=>[k,0]))};return s}
 
 function removeShoppingItem(s,index){
  assert(Number.isInteger(index)&&index>=0&&index<s.shoppingItems.length,'Invalid shopping index');

@@ -7,6 +7,17 @@ const nodes=Object.fromEntries(ids.map(id=>[id,element(id)])),handlers={},storag
 const context=vm.createContext({console,Date,JSON,Number,Set,Math,Object,Array,Error,Intl,URL,Blob,crypto:require('node:crypto').webcrypto,location:{protocol:'file:',reload(){}},navigator:{onLine:true},localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},matchMedia:()=>({matches:false,addEventListener(){}}),document:{getElementById:id=>{assert(nodes[id],id);return nodes[id]},documentElement:{dataset:{}},querySelector:()=>element('meta'),querySelectorAll:()=>[],addEventListener:(n,fn)=>handlers[n]=fn,hidden:false},window:{addEventListener(){},scrollTo(){}},setTimeout:()=>1,clearTimeout(){},setInterval(){},alert:m=>notices.push(m),confirm:()=>true});
 vm.runInContext(fs.readFileSync(path.join(root,'model.js'),'utf8')+'\n'+fs.readFileSync(path.join(root,'app.js'),'utf8'),context);
 vm.runInContext('accountReady=true',context);
+assert.equal(nodes.calorieGoal.textContent,'kcal logged');
+assert.equal(nodes.progressPct.textContent,'—');
+assert.equal(nodes.setupTargets.hidden,false);
+assert.match(nodes.supplements.innerHTML,/No supplements added/);
+assert.match(nodes.shoppingList.innerHTML,/Add your first item/);
+assert.equal(nodes.goalsForm.elements.namedItem('kcal').value,'');
+assert(!nodes.macroStats.innerHTML.includes('NaN'));
+// Existing-account fixture still retains and uses all previous goals and meals.
+vm.runInContext('state=normalize(freshState());render()',context);
+assert.equal(nodes.setupTargets.hidden,true);
+
 assert.equal(nodes.calories.textContent,'0');
 handlers.change({target:{dataset:{meal:'breakfast'},checked:true}});assert.equal(nodes.calories.textContent,'1,355');
 handlers.change({target:{dataset:{meal:'breakfast'},checked:false}});assert.equal(nodes.calories.textContent,'0');

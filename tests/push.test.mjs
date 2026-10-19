@@ -10,3 +10,5 @@ assert.equal(reminders({...p,water_enabled:false,stock_enabled:false},s,new Date
 assert.equal(validSubscription({endpoint:'https://127.0.0.1/secrets',keys:{p256dh:'a'.repeat(87),auth:'a'.repeat(22)}}),false);
 assert.equal(validSubscription({endpoint:'https://web.push.apple.com/test',keys:{p256dh:'a'.repeat(87),auth:'a'.repeat(22)}}),true);
 console.log('PASS: personal water goals, goal reached, stock thresholds, quiet hours, timezones, opt-out, push endpoint validation.');
+
+assert.equal(reminders(p,{settings:{goals:{water:0}},days:{},supplementStock:{}},new Date('2026-10-15T10:00:00Z')).length,0);

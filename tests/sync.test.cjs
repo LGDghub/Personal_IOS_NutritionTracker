@@ -30,7 +30,7 @@ const run=s=>vm.runInContext(s,context);
  // A second account starts empty and cannot inherit the first account's local records.
  const accountA=copy(remote);remote=null;
  authCallback('SIGNED_IN',{user:{id:'user-b',email:'other@example.com'}});
- assert.equal(run('Object.keys(state.days).length'),0);assert.equal(nodes.water.value,'');
+ assert.equal(run('Object.keys(state.days).length'),0);assert.equal(nodes.water.value,'');assert.equal(run('state.supplementItems.length'),0);assert.equal(run('state.shoppingItems.length'),0);assert.equal(run('state.settings.goals.kcal'),0);
  await run('syncNow()');assert.equal(Object.keys(remote.payload.days).length,0);
  nodes.addWater.onclick();await run('syncNow()');assert.equal(nodes.water.value,.25);
  remote=accountA;authCallback('SIGNED_IN',{user:{id:'user-a',email:'example@example.com'}});
