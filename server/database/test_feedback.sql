@@ -1,0 +1,24 @@
+begin;
+create temporary table align_test_ids as select gen_random_uuid() a,gen_random_uuid() b,gen_random_uuid() owner;
+insert into auth.users(id) select a from align_test_ids union all select b from align_test_ids union all select owner from align_test_ids;
+insert into public.align_feedback_admins select owner from align_test_ids;
+grant select on align_test_ids to authenticated;
+set local role authenticated;
+select set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true) from align_test_ids;
+insert into public.align_feedback(user_id,category,message,app_version) select a,'idea','Dummy feedback A','test' from align_test_ids;
+do $$begin
+ begin insert into public.align_feedback(user_id,category,message,app_version) select b,'bug','Spoofed message','test' from align_test_ids;raise exception 'Spoof allowed';exception when insufficient_privilege then null;end;
+ begin insert into public.align_feedback_admins select a from align_test_ids;raise exception 'Escalation allowed';exception when insufficient_privilege then null;end;
+end $$;
+select set_config('request.jwt.claims',json_build_object('sub',b,'role','authenticated')::text,true) from align_test_ids;
+do $$begin if exists(select 1 from public.align_feedback) then raise exception 'Cross-account leak';end if;end $$;
+insert into public.align_feedback(user_id,category,message,app_version) select b,'bug','Dummy feedback B','test' from align_test_ids;
+do $$declare n int;begin update public.align_feedback set status='reviewed';get diagnostics n=row_count;if n<>0 then raise exception 'User reviewed feedback';end if;end $$;
+select set_config('request.jwt.claims',json_build_object('sub',owner,'role','authenticated')::text,true) from align_test_ids;
+do $$begin if (select count(*) from public.align_feedback where app_version='test')<>2 then raise exception 'Owner cannot read inbox';end if;end $$;
+update public.align_feedback set status='reviewed' where app_version='test';
+select set_config('request.jwt.claims',json_build_object('sub',owner,'role','authenticated','client_id','dummy-oauth')::text,true) from align_test_ids;
+do $$begin if exists(select 1 from public.align_feedback) then raise exception 'OAuth accessed inbox';end if;end $$;
+reset role;
+select 'PASS: submission, spoof prevention, isolation, owner review, and OAuth denial' as result;
+rollback;

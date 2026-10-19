@@ -65,3 +65,20 @@ Renamed the app header, browser title, Home Screen metadata, account text and ba
 
 ## v2.3 — email password recovery
 Forgot password sends a Supabase recovery link to the entered account email. Verified recovery sessions open a new-password form with confirmation, validation and error handling. Sync waits until password recovery completes. No passwords are saved to app storage.
+
+## v4.0.0 — Align by Daly (19 October 2026)
+
+- Renamed the public app, install manifest, OAuth consent page, update-repair page and notification title to Align by Daly. Motto: “All your health in one place.”
+- Added a mint A icon on deep teal, with 192px/512px installation assets and a scalable in-app mark. Existing URL, manifest scope/start URL, local record keys and connector endpoint remain compatible.
+- Redesigned the phone signup page: name, email and password; a separate sign-in mode; confirmation message, resend cooldown and change-email/sign-in route. Name is display metadata, never an authorization claim. Existing sessions continue to use Supabase session persistence.
+- Added a four-part welcome guide for new v4 signups: features, Home Screen install, notifications, then ChatGPT. Completion is saved per account in metadata with a per-device fallback. Existing accounts bypass it; Settings has a replay option.
+- Added phone-specific installation instructions and a native install button when the browser provides that capability.
+- Kept Sync visible in the header; moved settings to a cog. Grouped targets, appearance, notifications, installation/update help and advanced data controls into expandable sections. Backup/import and sync explanations are folded away.
+- Added a separate Connect AI tab: four setup stages, bold wrapping server address, copy button, ChatGPT link, permission explanation and a sample weekly-summary prompt. Existing WFW connections continue working. Checked OpenAI setup documentation on 19 October 2026; UI/plan availability can vary.
+- Added Share Align using the device share sheet or copy fallback. Shares only the public URL, never session parameters or user records. Each new visitor creates their own account.
+- Added private feedback: category, 5–3,000 character message and app version, maximum 10 submissions/account/day. Identity is the authenticated account ID. Failure retains the draft while the page remains open. Signing out/switching accounts clears the draft and inbox.
+- Added an owner-only feedback inbox with newest-first pagination and Mark reviewed. The existing verified owner account was granted access administratively. No client can self-grant; OAuth connector sessions cannot access feedback. Users can access their own submissions only through the database policy, not anyone else’s.
+- Database deployment: `server/database/align_feedback.sql`; regression transaction: `server/database/test_feedback.sql` (rolled back, no real feedback created).
+- Automated checks: existing app/model/recovery/shopping/stock/sync checks plus new signup, welcome persistence, feedback draft/error and account-switch tests. SQL verified spoof prevention, account isolation, owner review and OAuth denial.
+- Browser installation and email confirmation still depend on the device/browser. Confirming in a different browser from an installed app may require signing into that app once. Existing Home Screen icon/name refresh is controlled by the phone; do not clear site data to force it.
+- No step counter, food-photo estimates, physique photos, paid features or live retailer prices were added in this release.

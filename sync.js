@@ -9,7 +9,7 @@ let syncMeta={},cloudUser=null,syncBusy=false,syncTimer,cloudConflict=null;
 let accountGeneration=0;
 function selectAccount(user){accountGeneration++;clearTimeout(syncTimer);accountReady=false;cloudConflict=null;state=newAccountState();syncMeta={};storageBlocked=false;
  try{if(user){KEY=LEGACY_KEY+'-account-'+user.id;SYNC_KEY=KEY+'-cloud';const legacyMeta=JSON.parse(localStorage.getItem(LEGACY_KEY+'-cloud')||'{}');if(!localStorage.getItem(KEY)&&legacyMeta.owner===user.id){const old=localStorage.getItem(LEGACY_KEY);if(old)localStorage.setItem(KEY,old);localStorage.setItem(SYNC_KEY,JSON.stringify(legacyMeta))}const data=localStorage.getItem(KEY);if(data)state=normalize(JSON.parse(data));syncMeta=JSON.parse(localStorage.getItem(SYNC_KEY)||'{}');accountReady=true;}else{KEY=LEGACY_KEY+'-signed-out';SYNC_KEY=KEY+'-cloud';}}catch(e){storageBlocked=true;syncLabel('Account storage could not be read · import a backup');}
- document.body.dataset.account=user?'signed-in':'signed-out';$('foodDialog').close();editingFood=null;render();if(!user)switchTab('settings');window.onWfwAccount?.(user);
+ document.body.dataset.account=user?'signed-in':'signed-out';$('foodDialog').close();editingFood=null;render();switchTab(user?'today':'settings');window.onWfwAccount?.(user);
 }
 function canonical(data){return JSON.stringify(normalize(data))}
 function persistSync(){localStorage.setItem(SYNC_KEY,JSON.stringify(syncMeta))}
@@ -50,9 +50,9 @@ $('syncNow').onclick=()=>{cloudConflict=null;$('syncConflict').hidden=true;syncN
 $('useCloud').onclick=()=>{if(!cloudConflict||syncBusy)return;if(!confirm('Replace this device’s records with the cloud copy? A recovery copy will be kept on this device.'))return;try{acceptCloud(cloudConflict);cloudConflict=null;$('syncConflict').hidden=true;syncNow()}catch(e){syncLabel('Could not keep a recovery copy: '+e.message)}};
 $('useDevice').onclick=()=>{if(!cloudConflict||syncBusy)return;if(!confirm('Replace the cloud records with this device’s complete copy? This affects your other devices too.'))return;try{localStorage.setItem(KEY+'-cloud-before-replace',JSON.stringify(cloudConflict.payload));syncMeta={owner:cloudUser.id,revision:cloudConflict.revision,base:canonical(cloudConflict.payload),lastSync:cloudConflict.updated_at};persistSync();cloudConflict=null;$('syncConflict').hidden=true;syncNow()}catch(e){syncLabel('Could not keep a recovery copy: '+e.message)}};
 $('authForm').onsubmit=async event=>{
- event.preventDefault();const action=event.submitter?.value||'signin';$('authMessage').textContent='Connecting…';
+ event.preventDefault();const action=event.submitter?.value||$('authSubmit')?.value||'signin';$('authMessage').textContent='Connecting…';
  const credentials={email:$('authEmail').value.trim(),password:$('authPassword').value};
- try{const result=action==='signup'?await cloud.auth.signUp({...credentials,options:{emailRedirectTo:'https://lgdghub.github.io/Personal_IOS_NutritionTracker/'}}):await cloud.auth.signInWithPassword(credentials);if(result.error)throw result.error;$('authPassword').value='';$('authMessage').textContent=action==='signup'&&!result.data.session?'Check your email and confirm your account, then return here to sign in.':'Signed in.'}catch(e){$('authMessage').textContent=e.message}
+ try{if(action==='signup'&&!$('signupName').value.trim())throw Error('Please enter your name.');const result=action==='signup'?await cloud.auth.signUp({...credentials,options:{emailRedirectTo:resetReturnURL,data:{display_name:$('signupName').value.trim().slice(0,80),align_onboarding_version:1}}}):await cloud.auth.signInWithPassword(credentials);if(result.error)throw result.error;$('authPassword').value='';$('authMessage').textContent=action==='signup'&&!result.data.session?'Open your confirmation email to finish signing in.':'Signed in.';if(action==='signup'&&!result.data.session)window.alignSignupSent?.(credentials.email)}catch(e){$('authMessage').textContent=e.message}
 };
 $('signOut').onclick=async()=>{if(syncBusy){toast('Wait for the current sync to finish.');return}await window.wfwBeforeSignOut?.();const {error}=await cloud.auth.signOut({scope:'local'});if(error)$('authMessage').textContent=error.message};
 cloud.auth.onAuthStateChange((_event,session)=>{
@@ -64,10 +64,10 @@ cloud.auth.onAuthStateChange((_event,session)=>{
  $('newPasswordForm').hidden=!recoveryUserId;
  if(recoveryUserId){switchTab('settings');window.scrollTo({top:0,behavior:'instant'});syncLabel('Choose your new password to finish recovery');}
  if(cloudUser&&!$('resetEmail').value)$('resetEmail').value=cloudUser.email||'';
-$('authForm').hidden=!!cloudUser;$('signOut').hidden=!cloudUser;$('syncNow').hidden=!cloudUser;$('cloudAccount').textContent=cloudUser?'Signed in as '+cloudUser.email:'Create a Personal WFW Tracker login. This is separate from your Supabase dashboard account.';
+$('authForm').hidden=!!cloudUser;$('signOut').hidden=!cloudUser;$('syncNow').hidden=!cloudUser;$('cloudAccount').textContent=cloudUser?'Signed in as '+cloudUser.email:'';
  cloudConflict=null;$('syncConflict').hidden=true;
  // Run outside the auth callback to avoid waiting on the SDK's auth lock.
- setTimeout(syncNow,0);
+ setTimeout(()=>{syncNow();if(_event==='INITIAL_SESSION'||previous!==cloudUser?.id)window.alignAccount?.(cloudUser)},0);
 });
 window.addEventListener('online',syncNow);window.addEventListener('offline',()=>syncLabel('Offline · changes stay on this device'));
 window.addEventListener('focus',syncNow);document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncNow()});
