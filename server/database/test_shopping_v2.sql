@@ -1,0 +1,33 @@
+begin;
+create temporary table shopping_v2_ids(a uuid,b uuid);
+insert into shopping_v2_ids values(gen_random_uuid(),gen_random_uuid());
+grant select on shopping_v2_ids to authenticated;
+insert into auth.users(id,email) select a,a::text||'@example.invalid' from shopping_v2_ids union all select b,b::text||'@example.invalid' from shopping_v2_ids;
+insert into public.nutrition_state(user_id,payload) select id,'{"version":3,"shoppingFormat":1,"days":{},"weights":{},"shop":{"0":true},"shoppingItems":[{"name":"4 × 500g mince","price":20.76}],"shoppingWeeks":{"2026-10-19":{"0":true}},"supplementItems":[]}'::jsonb from(select a id from shopping_v2_ids union all select b from shopping_v2_ids) t;
+insert into public.wfw_connector_access(user_id,client_id,can_shopping_write) select a,'shopping-v2-test',true from shopping_v2_ids;
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object('sub',a,'role','authenticated','client_id','shopping-v2-test','resource','https://zrtnabwryzbdqzwghxcp.supabase.co/functions/v1/wfw-mcp')::text,true) from shopping_v2_ids;
+do $$declare r jsonb; p jsonb; begin
+ r:=public.wfw_update_shopping_list('[{"original_index":0,"name":"beef mince","quantity":4,"size":500,"unit":"g","price":5.19},{"original_index":null,"name":"milk","quantity":2,"size":1,"unit":"L","price":1.50}]',1);
+ if r->>'subtotal'<>'23.76' or (r->>'revision')::int<>2 then raise exception 'Quantity pricing failed: %',r;end if;
+ select payload into p from public.nutrition_state where user_id=(select a from shopping_v2_ids);
+ if p->>'shoppingFormat'<>'2' or p->'shoppingWeeks'->'2026-10-19'<>'{"0":true}'::jsonb then raise exception 'Upgrade or ticks failed';end if;
+ r:=public.wfw_set_shopping_discount('2026-10-19','{"type":"percent","value":10}',2);
+ if r->'discount'->>'value'<>'10' or (r->>'revision')::int<>3 then raise exception 'Discount failed';end if;
+ r:=public.wfw_set_shopping_purchased('2026-10-19','[{"item_index":1,"purchased":true}]',3);
+ if (r->>'revision')::int<>4 then raise exception 'Purchase failed';end if;
+ select payload into p from public.nutrition_state where user_id=(select a from shopping_v2_ids);
+ if p->>'shoppingFormat'<>'2' then raise exception 'Purchase downgraded shopping format';end if;
+ r:=public.wfw_set_shopping_discount('2026-10-19',null,4);
+ if r->>'revision'<>'5' then raise exception 'Discount removal failed';end if;
+ begin perform public.wfw_set_shopping_discount('2026-10-19','{"type":"percent","value":101}',5);raise exception 'Oversized discount accepted';exception when others then if sqlerrm='Oversized discount accepted' then raise;end if;end;
+ begin perform public.wfw_update_shopping_list('[]',4);raise exception 'Stale revision accepted';exception when serialization_failure then null;end;
+ if (select count(*) from public.nutrition_state)<>1 then raise exception 'Cross-account read';end if;
+end $$;
+reset role;
+do $$begin
+ if exists(select 1 from public.nutrition_state where user_id=(select b from shopping_v2_ids) and revision<>1) then raise exception 'Cross-account write';end if;
+ begin update public.nutrition_state set payload=jsonb_set(payload,'{shoppingFormat}','1') where user_id=(select a from shopping_v2_ids);raise exception 'Old format accepted';exception when others then if sqlerrm='Old format accepted' then raise;end if;end;
+end $$;
+rollback;
+select 'PASS: quantity pricing, discount, tick preservation, format guard, revision, isolation' as result;

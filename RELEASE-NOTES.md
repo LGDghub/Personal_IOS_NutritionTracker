@@ -1,3 +1,14 @@
+## v4.2.0 — shopping quantities and discounts (20 October 2026)
+
+- Shopping items now have separate name, quantity, pack size/unit, and manual price for one. Each line and the basket subtotal calculate quantity × price, in pence.
+- Food units: mg, g, kg, oz, lb, piece, pack. Drink units: ml, cl, L, fl oz, cup, pint, gallon, piece, pack. Units label the size of one item; the app does not convert between them.
+- A weekly discount can be 5%, 10%, 20%, another percentage, or a fixed GBP amount. It is capped at the shop subtotal; weekly purchase ticks and discounts remain separate by Monday week.
+- Existing line prices and totals migrate automatically. The app separates a leading quantity when that line total splits evenly into pence; otherwise it keeps the original label as one line so the amount never changes unexpectedly. Users may edit legacy items to fill in their pack size.
+- ChatGPT shopping tools now read and edit quantity, size, unit, unit price and weekly discounts under each account’s existing shopping edit permission. ChatGPT must refresh the connector tools to see the new discount command.
+- Cloud migration: `server/database/009_shopping_fields_discounts.sql`; transaction rollback check: `server/database/test_shopping_v2.sql`. The format guard permits upgrades to v2 and blocks older clients from downgrading it.
+- Existing page URL, account identity, and Supabase snapshot table remain the same. Shopping prices remain manual.
+
+
 # Align by Daly 4.1.0 — Together identity and blank personal setup
 
 - Replaced the A icon with chosen concept 18: emerald background, cream check, and cream/mint/blue circle segments. Updated SVG, 192px and 512px install icons.

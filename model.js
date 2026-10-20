@@ -17,7 +17,28 @@ function dateNumber(s){return Date.parse(s+'T12:00:00Z')/86400000}
 function sumMeals(meals){return meals.reduce((t,m)=>{for(const k of MACROS)t[k]=round(t[k]+m[k]);return t},Object.fromEntries(MACROS.map(k=>[k,0])))}
 const DEFAULT_GOALS={...sumMeals(MEALS),water:3.5};
 const DEFAULT_SHOP=SHOP.map(([name,price])=>({name,price:Number(price.replace('£',''))}));
-function freshState(){return {version:3,shoppingFormat:1,supplementItems:clone(SUPPS),supplementStock:{},days:{},weights:{},shop:{},shoppingWeeks:{},shoppingItems:clone(DEFAULT_SHOP),templates:clone(MEALS),settings:{theme:'dark',goals:clone(DEFAULT_GOALS)},updatedAt:null}}
+const SHOP_UNITS=['mg','g','kg','oz','lb','ml','cl','L','fl oz','cup','pint','gallon','piece','pack'];
+function legacyShopItem(i){
+ const match=i.name.match(/^(\d{1,4})\s*[×x]\s*(.+)$/i),quantity=match?Number(match[1]):1,cents=Math.round(i.price*100);
+ if(!match||quantity>1000||cents%quantity!==0)return {name:i.name,quantity:1,size:0,unit:'piece',price:i.price};
+ let name=match[2],size=0,unit='piece';const measured=name.match(/^(\d+(?:\.\d+)?)\s*(mg|kg|g|oz|lb|ml|cl|l|fl oz|cups?|pints?|gallons?)\b\s*(.+)$/i);
+ if(measured){size=Number(measured[1]);unit=measured[2].toLowerCase().replace(/s$/,'');if(unit==='l')unit='L';name=measured[3]}
+ return {name,quantity,size,unit,price:cents/quantity/100};
+}
+function safeShopItem(i){
+ assert(record(i)&&typeof i.name==='string'&&i.name.trim()&&i.name.length<=200,'Invalid shopping item');
+ const price=number(i.price,0,10000,'unit price');assert(Math.abs(price*100-Math.round(price*100))<.00001,'Unit price must be in pence');
+ if(i.quantity===undefined)return legacyShopItem(i); // Old line totals remain exact.
+ const quantity=number(i.quantity,1,1000,'quantity');assert(Number.isInteger(quantity),'Quantity must be a whole number');
+ const size=number(i.size,0,100000,'pack size');assert(Math.round(size*1000)===size*1000,'Invalid pack size');
+ assert(SHOP_UNITS.includes(i.unit),'Invalid unit');assert(Math.round(quantity*price*100)<=100000000,'Shopping line too expensive');
+ return {name:i.name.trim(),quantity,size,unit:i.unit,price};
+}
+function shopLine(i){return Math.round(i.quantity*i.price*100)}
+function shopSubtotal(items){return items.reduce((sum,i)=>sum+shopLine(i),0)}
+function shopDiscount(subtotal,discount){return discount.type==='percent'?Math.round(subtotal*discount.value/100):Math.min(subtotal,Math.round(discount.value*100))}
+function safeDiscount(d){assert(record(d)&&['percent','amount'].includes(d.type),'Invalid discount');const value=number(d.value,0,d.type==='percent'?100:10000,'discount');assert(Math.round(value*100)===value*100,'Invalid discount precision');return {type:d.type,value}}
+function freshState(){return {version:3,shoppingFormat:2,supplementItems:clone(SUPPS),supplementStock:{},days:{},weights:{},shop:{},shoppingWeeks:{},shoppingDiscounts:{},shoppingItems:clone(DEFAULT_SHOP).map(safeShopItem),templates:clone(MEALS),settings:{theme:'dark',goals:clone(DEFAULT_GOALS)},updatedAt:null}}
 function assert(ok,message){if(!ok)throw Error(message)}
 function record(x){return x!==null&&typeof x==='object'&&!Array.isArray(x)}
 function number(x,min,max,label){assert(typeof x==='number'&&Number.isFinite(x)&&x>=min&&x<=max,`Invalid ${label}`);return x}
@@ -35,9 +56,10 @@ function normalize(raw){
   assert(record(raw.settings)&&['dark','light','system'].includes(raw.settings.theme),'Invalid settings');s.settings={theme:raw.settings.theme,goals:safeGoals(raw.settings.goals,true)};
   s.templates=safeMeals(raw.templates);assert(s.templates.length===3&&MEALS.every(m=>s.templates.some(t=>t.id===m.id)),'Missing default meals');
   assert(Array.isArray(raw.shoppingItems)&&raw.shoppingItems.length<=200,'Invalid shopping list');
-  s.shoppingItems=raw.shoppingItems.map(i=>{assert(record(i)&&typeof i.name==='string'&&i.name.length<=200,'Invalid shopping item');return {name:i.name,price:number(i.price,0,10000,'price')}});
+  s.shoppingItems=raw.shoppingItems.map(safeShopItem);
   assert(record(raw.shoppingWeeks),'Invalid shopping weeks');
   for(const [wk,ticks] of Object.entries(raw.shoppingWeeks)){assert(validDate(wk)&&weekStart(wk)===wk,'Invalid shopping week');s.shoppingWeeks[wk]=safeTicks(ticks,s.shoppingItems.map((_,i)=>String(i)))}
+  if(raw.shoppingDiscounts!==undefined){assert(record(raw.shoppingDiscounts),'Invalid discounts');for(const [wk,d] of Object.entries(raw.shoppingDiscounts)){assert(validDate(wk)&&weekStart(wk)===wk,'Invalid discount week');s.shoppingDiscounts[wk]=safeDiscount(d)}}
  }
  assert(Object.keys(raw.days).length<=30000&&Object.keys(raw.weights).length<=30000,'Too many records');
  for(const [date,d] of Object.entries(raw.days)){
@@ -50,7 +72,7 @@ function normalize(raw){
  s.shop=safeTicks(raw.shop,(raw.version>=2?s.shoppingItems:DEFAULT_SHOP).map((_,i)=>String(i)));
  if(!(raw.version>=2)&&Object.keys(s.shop).length)s.shoppingWeeks[weekStart(localDay())]=clone(s.shop);
  if(raw.version===3){assert(record(raw.supplementStock),'Invalid stock');for(const [id,v] of Object.entries(raw.supplementStock)){assert(s.supplementItems.some(x=>x[0]===id)&&record(v),'Invalid supplement');s.supplementStock[id]={balance:number(v.balance,0,100000,'stock'),dose:number(v.dose,.01,10000,'dose'),threshold:number(v.threshold,0,100000,'threshold'),anchorCount:number(v.anchorCount,0,30000,'stock baseline'),unit:String(v.unit).slice(0,30),cycle:String(v.cycle).slice(0,80)}}}
- s.updatedAt=typeof raw.updatedAt==='string'?raw.updatedAt:null;return s;
+ s.shoppingFormat=2;s.updatedAt=typeof raw.updatedAt==='string'?raw.updatedAt:null;return s;
 }
 function totals(d){const eaten=d.meals.filter(m=>d.completed[m.id]);return {...sumMeals(eaten),count:eaten.filter(m=>MEALS.some(base=>base.id===m.id)).length,foods:eaten.length}}
 function dailySummary(s,date){const d=s.days[date];if(!d)return {date,logged:false,weightKg:s.weights[date]??null};const t=totals(d);return {date,logged:true,...t,waterLitres:d.waterRecorded?d.water:null,waterGoalLitres:d.goals.water,waterGoalMet:d.waterRecorded&&d.goals.water>0?d.water>=d.goals.water:null,calorieGoalMet:d.goals.kcal>0?t.kcal>=d.goals.kcal:null,proteinGoalMet:d.goals.kcal>0?t.p>=d.goals.p:null,targets:clone(d.goals),weightKg:s.weights[date]??null,meals:d.meals.map(m=>({...clone(m),eaten:!!d.completed[m.id]})),supplements:clone(d.supplements),updatedAt:d.updatedAt}}
