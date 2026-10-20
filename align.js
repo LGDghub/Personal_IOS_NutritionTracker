@@ -1,5 +1,5 @@
 'use strict';
-const ALIGN_VERSION='4.1.0';
+const ALIGN_VERSION='4.2.0';
 const PUBLIC_APP_URL='https://lgdghub.github.io/Personal_IOS_NutritionTracker/';
 let authMode='signup',pendingSignupEmail='',resendAfter=0,installPrompt=null,welcomeIndex=0,feedbackOffset=0;
 function setAuthMode(mode){authMode=mode;const signup=mode==='signup';$('signupNameLabel').hidden=!signup;$('signupName').required=signup;$('authPassword').autocomplete=signup?'new-password':'current-password';$('authSubmit').value=mode;$('authSubmit').textContent=signup?'Create account':'Sign in';$('accountHeading').textContent=signup?'Create your account':'Welcome back';$('authMode').textContent=signup?'Already have an account? Sign in':'New to Align? Create account';$('confirmEmail').hidden=true;$('authForm').hidden=!!cloudUser;$('passwordReset').hidden=signup||!!cloudUser;}
