@@ -1,5 +1,5 @@
 'use strict';
-const ALIGN_VERSION='5.2.0';
+const ALIGN_VERSION='5.2.1';
 const PUBLIC_APP_URL='https://lgdghub.github.io/Personal_IOS_NutritionTracker/';
 let authMode='signup',pendingSignupEmail='',resendAfter=0,installPrompt=null,welcomeIndex=0,feedbackOffset=0;
 function setAuthMode(mode){authMode=mode;const signup=mode==='signup';$('signupNameLabel').hidden=!signup;$('signupName').required=signup;$('authPassword').autocomplete=signup?'new-password':'current-password';$('authSubmit').value=mode;$('authSubmit').textContent=signup?'Create account':'Sign in';$('accountHeading').textContent=signup?'Create your account':'Welcome back';$('authMode').textContent=signup?'Already have an account? Sign in':'New to Align? Create account';$('confirmEmail').hidden=true;$('authForm').hidden=!!cloudUser;$('socialAuth').hidden=!!cloudUser;$('passwordReset').hidden=signup||!!cloudUser;}
@@ -61,5 +61,5 @@ $('goalBack').onclick=()=>moveGoal(goalIndex-1);
 $('skipGoals').onclick=()=>{if(!goalBusy)finishGoalSetup()};
 $('goalDialog').addEventListener('cancel',e=>{e.preventDefault();if(!goalBusy)finishGoalSetup()});
 $('replayGoals').onclick=()=>{goalIndex=0;showGoalSetup()};
-async function configureSocialSignIn(){try{const response=await fetch('https://zrtnabwryzbdqzwghxcp.supabase.co/auth/v1/settings',{headers:{apikey:'sb_publishable_qKmHecgEm6v5_-WJR0ib_Q_G7gwbWmq'}});if(!response.ok)return;const settings=await response.json();for(const provider of ['google','apple']){const button=$(provider+'SignIn');if(!settings.external?.[provider])continue;button.disabled=false;button.querySelector('small').hidden=true;button.onclick=async()=>{button.disabled=true;try{const {error}=await cloud.auth.signInWithOAuth({provider,options:{redirectTo:PUBLIC_APP_URL}});if(error)throw error}catch(e){$('authMessage').textContent=e.message;button.disabled=false}}}}catch{}}
+async function configureSocialSignIn(){try{const response=await fetch('https://zrtnabwryzbdqzwghxcp.supabase.co/auth/v1/settings',{headers:{apikey:'sb_publishable_qKmHecgEm6v5_-WJR0ib_Q_G7gwbWmq'}});if(!response.ok)return;const settings=await response.json();for(const provider of ['google','apple']){const button=$(provider+'SignIn');if(!settings.external?.[provider])continue;button.disabled=false;const label=provider==='google'?'Google':'Apple';button.setAttribute('aria-label','Sign in with '+label);button.title='Sign in with '+label;$('providerAvailability').hidden=true;button.onclick=async()=>{button.disabled=true;try{const {error}=await cloud.auth.signInWithOAuth({provider,options:{redirectTo:PUBLIC_APP_URL}});if(error)throw error}catch(e){$('authMessage').textContent=e.message;button.disabled=false}}}}catch{}}
 configureSocialSignIn();if(cloudUser)window.alignAccount(cloudUser);
