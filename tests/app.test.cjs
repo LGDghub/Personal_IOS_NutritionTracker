@@ -52,3 +52,16 @@ assert(!nodes.stockId.innerHTML.includes('Zinc daily'));
 assert.equal(vm.runInContext('readDay().supplements[state.supplementItems.at(-1)[0]]',context),true);
 vm.runInContext('for(const [id] of activeSupplements(state))removeSupplement(state,id);render()',context);
 assert.equal(nodes.stockPanel.hidden,true);
+
+vm.runInContext("selectDate('2026-10-12')",context);
+nodes.weightUnit.onchange({target:{value:'lb'}});
+assert.equal(nodes.weightUnit.value,'lb');
+assert.equal(nodes.weight.value,154.8);
+nodes.weight.value='154.3';nodes.saveWeight.onclick();
+assert(Math.abs(vm.runInContext("state.weights['2026-10-12']",context)-69.99)<.02);
+assert(nodes.weightRows.innerHTML.includes('lb'));
+nodes.weightUnit.onchange({target:{value:'kg'}});
+assert(Math.abs(nodes.weight.value-70)<.11);
+nodes.removeWater.onclick();assert(Number(nodes.water.value)>=0);
+nodes.addWater500.onclick();assert(Number(nodes.water.value)>=.5);
+console.log('PASS: pounds entry, conversion, history unit switching and hydration controls.');

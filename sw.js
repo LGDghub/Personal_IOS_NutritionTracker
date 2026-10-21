@@ -1,5 +1,5 @@
 // Bump VERSION for each release. Waiting updates are applied by the user's Update button.
-const VERSION='v4.2.0';
+const VERSION='v5.0.0';
 const PREFIX='nutrition-os-'+encodeURIComponent(self.registration.scope)+'-';
 const CACHE=PREFIX+VERSION;
 const ASSETS=['./','./index.html','./style.css','./model.js','./app.js','./sync.js','./features.js','./align.js','./align-icon.svg','./align-192.png','./align-512.png','./vendor/supabase-2.117.3.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
@@ -18,3 +18,4 @@ function accountStore(value,write=false){return new Promise((resolve,reject)=>{c
 self.addEventListener('message',event=>{if(event.data?.type==='ACTIVE_ACCOUNT')event.waitUntil(accountStore(event.data.userId,true))});
 self.addEventListener('push',event=>event.waitUntil((async()=>{let data;try{data=event.data.json()}catch{return}if(!data.userId||await accountStore()!==data.userId)return;await self.registration.showNotification('Align by Daly',{body:data.body,tag:data.tag,icon:'./align-192.png',badge:'./align-192.png',data:{url:self.registration.scope}})})()));
 self.addEventListener('notificationclick',event=>{event.notification.close();event.waitUntil((async()=>{const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});const existing=windows.find(c=>c.url.startsWith(self.registration.scope));if(existing)return existing.focus();return self.clients.openWindow(self.registration.scope)})())});
+
