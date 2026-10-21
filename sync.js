@@ -52,7 +52,7 @@ $('useDevice').onclick=()=>{if(!cloudConflict||syncBusy)return;if(!confirm('Repl
 $('authForm').onsubmit=async event=>{
  event.preventDefault();const action=event.submitter?.value||$('authSubmit')?.value||'signin';$('authMessage').textContent='Connecting…';
  const credentials={email:$('authEmail').value.trim(),password:$('authPassword').value};
- try{if(action==='signup'&&!$('signupName').value.trim())throw Error('Please enter your name.');const result=action==='signup'?await cloud.auth.signUp({...credentials,options:{emailRedirectTo:resetReturnURL,data:{display_name:$('signupName').value.trim().slice(0,80),align_onboarding_version:1}}}):await cloud.auth.signInWithPassword(credentials);if(result.error)throw result.error;$('authPassword').value='';$('authMessage').textContent=action==='signup'&&!result.data.session?'Open your confirmation email to finish signing in.':'Signed in.';if(action==='signup'&&!result.data.session)window.alignSignupSent?.(credentials.email)}catch(e){$('authMessage').textContent=e.message}
+ try{if(action==='signup'&&!$('signupName').value.trim())throw Error('Please enter your name.');const result=action==='signup'?await cloud.auth.signUp({...credentials,options:{emailRedirectTo:resetReturnURL,data:{display_name:$('signupName').value.trim().slice(0,80),align_onboarding_version:2}}}):await cloud.auth.signInWithPassword(credentials);if(result.error)throw result.error;$('authPassword').value='';$('authMessage').textContent=action==='signup'&&!result.data.session?'Open your confirmation email to finish signing in.':'Signed in.';if(action==='signup'&&!result.data.session)window.alignSignupSent?.(credentials.email)}catch(e){$('authMessage').textContent=e.message}
 };
 $('signOut').onclick=async()=>{if(syncBusy){toast('Wait for the current sync to finish.');return}await window.wfwBeforeSignOut?.();const {error}=await cloud.auth.signOut({scope:'local'});if(error)$('authMessage').textContent=error.message};
 cloud.auth.onAuthStateChange((_event,session)=>{
@@ -67,7 +67,7 @@ cloud.auth.onAuthStateChange((_event,session)=>{
 $('authForm').hidden=!!cloudUser;$('signOut').hidden=!cloudUser;$('syncNow').hidden=!cloudUser;$('cloudAccount').textContent=cloudUser?'Signed in as '+cloudUser.email:'';
  cloudConflict=null;$('syncConflict').hidden=true;
  // Run outside the auth callback to avoid waiting on the SDK's auth lock.
- setTimeout(()=>{syncNow();if(_event==='INITIAL_SESSION'||previous!==cloudUser?.id)window.alignAccount?.(cloudUser)},0);
+ const activeId=cloudUser?.id;setTimeout(async()=>{await syncNow();if(cloudUser?.id===activeId&&(_event==='INITIAL_SESSION'||previous!==activeId))window.alignAccount?.(cloudUser)},0);
 });
 window.addEventListener('online',syncNow);window.addEventListener('offline',()=>syncLabel('Offline · changes stay on this device'));
 window.addEventListener('focus',syncNow);document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncNow()});
@@ -97,3 +97,4 @@ $('newPasswordForm').onsubmit=async event=>{
 // Supabase returns expired/used link errors in the URL. Do not display token values.
 const recoveryError=new URLSearchParams(location.hash?.slice(1)||'').has('error')||new URLSearchParams(location.search||'').has('error');
 if(recoveryError){recoveryPending=false;switchTab('settings');$('passwordReset').open=true;$('resetEmailMessage').textContent='This email link is invalid or has expired. Request a new password reset email below.';}
+

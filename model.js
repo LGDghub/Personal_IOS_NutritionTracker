@@ -44,7 +44,7 @@ function record(x){return x!==null&&typeof x==='object'&&!Array.isArray(x)}
 function number(x,min,max,label){assert(typeof x==='number'&&Number.isFinite(x)&&x>=min&&x<=max,`Invalid ${label}`);return x}
 function safeMeal(m){assert(record(m)&&typeof m.id==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(m.id)&&!['__proto__','constructor','prototype'].includes(m.id),'Invalid food ID');assert(typeof m.name==='string'&&m.name.trim().length>0&&m.name.length<=100,'Invalid food name');assert(Array.isArray(m.foods)&&m.foods.length<=100&&m.foods.every(f=>typeof f==='string'&&f.length<=1500),'Invalid ingredients');const out={id:m.id,name:m.name,foods:[...m.foods]};for(const k of MACROS)out[k]=number(m[k],0,k==='kcal'?20000:2000,k);return out}
 function safeMeals(list){assert(Array.isArray(list)&&list.length<=200,'Invalid meals');const out=list.map(safeMeal);assert(new Set(out.map(m=>m.id)).size===out.length,'Duplicate food IDs');return out}
-function safeGoals(g,allowUnset=false){assert(record(g),'Invalid targets');if(allowUnset&&[...MACROS,'water'].every(k=>g[k]===0))return Object.fromEntries([...MACROS,'water'].map(k=>[k,0]));const out={};for(const k of MACROS)out[k]=number(g[k],k==='kcal'?1:0,k==='kcal'?20000:2000,'target '+k);out.water=number(g.water,.25,10,'water target');assert(Math.abs(out.water*4-Math.round(out.water*4))<.0001,'Water target must use 250ml steps');return out}
+function safeGoals(g,allowUnset=false){assert(record(g),'Invalid targets');if(allowUnset&&[...MACROS,'water'].every(k=>g[k]===0))return Object.fromEntries([...MACROS,'water'].map(k=>[k,0]));const out={};for(const k of MACROS)out[k]=number(g[k],k==='kcal'&&!allowUnset?1:0,k==='kcal'?20000:2000,'target '+k);out.water=number(g.water,allowUnset?0:.25,10,'water target');assert(Math.abs(out.water*4-Math.round(out.water*4))<.0001,'Water target must use 250ml steps');return out}
 function safeTicks(obj,keys){assert(record(obj),'Invalid checkboxes');const out={};for(const [k,v] of Object.entries(obj)){assert(keys.includes(k)&&typeof v==='boolean','Invalid checkbox');out[k]=v}return out}
 function makeDay(state){return {meals:clone(state.templates),completed:{},supplements:{},water:0,waterRecorded:false,goals:clone(state.settings.goals),updatedAt:null}}
 function normalize(raw){
@@ -54,6 +54,7 @@ function normalize(raw){
  if(raw.supplementItems!==undefined)s.supplementItems=safeSupplements(raw.supplementItems);
  if(raw.version>=2){
   assert(record(raw.settings)&&['dark','light','system'].includes(raw.settings.theme),'Invalid settings');s.settings={theme:raw.settings.theme,goals:safeGoals(raw.settings.goals,true)};
+  if(raw.settings.steps!==undefined)s.settings.steps=number(raw.settings.steps,0,100000,'steps target');
   s.templates=safeMeals(raw.templates);assert(s.templates.length===3&&MEALS.every(m=>s.templates.some(t=>t.id===m.id)),'Missing default meals');
   assert(Array.isArray(raw.shoppingItems)&&raw.shoppingItems.length<=200,'Invalid shopping list');
   s.shoppingItems=raw.shoppingItems.map(safeShopItem);
@@ -104,3 +105,4 @@ function removeSupplement(s,id){
  s.supplementItems=s.supplementItems.map(v=>v[0]===id?[v[0],v[1],true]:v);
  delete s.supplementStock[id];
 }
+

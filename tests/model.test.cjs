@@ -49,8 +49,11 @@ testAssert.equal(dailySummary(blank,'2026-10-19').waterGoalMet,null);
 testAssert.equal(dailySummary(blank,'2026-10-19').calorieGoalMet,null);
 testAssert.equal(weekSummary(blank,'2026-10-19').waterGoalDays,0);
 testAssert.throws(()=>safeGoals(blank.settings.goals));
-testAssert.throws(()=>safeGoals({...blank.settings.goals,p:1},true));
+testAssert.equal(safeGoals({...blank.settings.goals,p:1},true).p,1);
+testAssert.throws(()=>safeGoals({...blank.settings.goals,water:.1},true));
+blank.settings.steps=8000;testAssert.equal(normalize(blank).settings.steps,8000);
 const existing=freshState();existing.supplementItems=[['mine','My supplement']];existing.settings.goals.kcal=2400;
 testAssert.deepEqual(JSON.parse(JSON.stringify(normalize(existing))),JSON.parse(JSON.stringify(existing)));
 console.log('PASS: v1 migration, macro totals, extra food, snapshots, backups, invalid input, water missingness, weekly aggregates, date/DST handling.');
 `,context);
+
